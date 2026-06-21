@@ -39,5 +39,5 @@ next-env.d.ts
 # Contentlayer
 .contentlayer
 
-# Claude Code local settings
-.claude/settings.local.json
+# Claude Code local files (settings, preview launch config)
+.claude/
