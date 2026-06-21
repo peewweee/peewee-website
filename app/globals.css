@@ -2,26 +2,278 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================================================
+   Wizarding Design System — design tokens
+   Ported verbatim from `docs/Wizarding Design System.html` (single source of
+   truth). Do not invent values here; mirror the style guide.
+   ========================================================================= */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Background (nocturnal navy) */
+  --bg: #0b1026;
+  --bg-elev: #10152e;
+  --bg-sunken: #070a18;
+
+  /* Surfaces */
+  --surface: #161b38;
+  --surface-2: #1d2342;
+
+  /* Parchment */
+  --parchment: #f4ecd8;
+  --parchment-2: #eae0c6;
+
+  /* Text on dark */
+  --text: #f4ecd8;
+  --text-muted: #b9c0d8;
+  --text-faint: #8c93b0;
+
+  /* Ink (text on parchment) */
+  --ink: #221c0e;
+  --ink-muted: #5c5238;
+  --ink-faint: #8a7e5e;
+
+  /* Borders */
+  --border: rgba(244, 236, 216, 0.12);
+  --border-strong: rgba(244, 236, 216, 0.22);
+  --border-ink: rgba(34, 28, 14, 0.14);
+
+  /* Gold / accent (neutral "unsorted" theme) */
+  --accent: #d4af37;
+  --accent-2: #c8a24a;
+  --accent-text: #e8c766;
+  --accent-ink: #1a1206;
+  --accent-glow: 212, 175, 55; /* raw RGB triplet for use inside rgba() */
+  --gold: #d4af37;
+  --gold-hover: #e2c158;
+  --gold-press: #b8952b;
+  --gold-ink: #1a1206;
+
+  /* Status */
+  --success: #57be89;
+  --warning: #e0a93b;
+  --danger: #e97a70;
+
+  /* Focus ring */
+  --focus: #b7a6ff;
+
+  /* Motion — easings */
+  --ease-float: cubic-bezier(0.4, 0.14, 0.3, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-candle: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  --ease-glide: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Motion — durations (only --dur-unfurl is in the style guide; the rest are
+     supplementary scale steps used by component transitions) */
+  --dur-unfurl: 900ms;
+  --dur-fast: 160ms;
+  --dur: 240ms;
+  --dur-slow: 480ms;
+
+  /* Shape — shadcn/ui compatibility (card radius from the style guide) */
+  --radius: 14px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* =========================================================================
+   House themes — applied by setting data-house="…" on any subtree.
+   Only --accent / --accent-2 / --accent-text / --accent-ink / --accent-glow
+   swap; the nocturnal base never moves, so there is no rebuild or flash.
+   Values mirror the `houses` map in the style guide.
+   ========================================================================= */
+
+[data-house="gryffindor"] {
+  --accent: #b11e36;
+  --accent-2: #d4af37;
+  --accent-text: #f0a39a;
+  --accent-ink: #fff3e6;
+  --accent-glow: 177, 30, 54;
+}
+
+[data-house="slytherin"] {
+  --accent: #1f7a52;
+  --accent-2: #bfc6ce;
+  --accent-text: #6fd3a1;
+  --accent-ink: #06170f;
+  --accent-glow: 31, 122, 82;
+}
+
+[data-house="ravenclaw"] {
+  --accent: #2e5bbf;
+  --accent-2: #b08d57;
+  --accent-text: #8fb2f2;
+  --accent-ink: #f2f5ff;
+  --accent-glow: 46, 91, 191;
+}
+
+[data-house="hufflepuff"] {
+  --accent: #e8b71e;
+  --accent-2: #1a1a1a;
+  --accent-text: #f2c94c;
+  --accent-ink: #2a2200;
+  --accent-glow: 232, 183, 30;
+}
+
+/* Optional explicit neutral reset (default already lives in :root) */
+[data-house="neutral"] {
+  --accent: #d4af37;
+  --accent-2: #c8a24a;
+  --accent-text: #e8c766;
+  --accent-ink: #1a1206;
+  --accent-glow: 212, 175, 55;
+}
+
+/* =========================================================================
+   Base
+   ========================================================================= */
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    /* Enchanted castle at night: subtle starfield + candlelit vignette.
+       Pure CSS gradients — no image payload. */
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(244, 236, 216, 0.5), transparent),
+      radial-gradient(1px 1px at 75% 18%, rgba(244, 236, 216, 0.35), transparent),
+      radial-gradient(1.5px 1.5px at 60% 70%, rgba(244, 236, 216, 0.3), transparent),
+      radial-gradient(1px 1px at 35% 85%, rgba(244, 236, 216, 0.25), transparent),
+      radial-gradient(
+        ellipse 80% 60% at 50% -10%,
+        rgba(var(--accent-glow), 0.08),
+        transparent 70%
+      ),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-sunken) 100%);
+    background-attachment: fixed;
+    min-height: 100dvh;
+  }
+
+  /* Display / heading defaults */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-cinzel), ui-serif, Georgia, serif;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  /* Visible keyboard focus, driven by --focus (WCAG 2.1 AA) */
+  :focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--bg),
+      0 0 0 4px var(--focus);
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: rgba(var(--accent-glow), 0.3);
+    color: var(--text);
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+/* =========================================================================
+   Reusable component utilities (match the style guide)
+   ========================================================================= */
+
+@layer components {
+  /* Candlelit parchment surface */
+  .parchment-surface {
+    background: linear-gradient(180deg, var(--parchment) 0%, var(--parchment-2) 100%);
+    color: var(--ink);
+    border: 1px solid var(--border-ink);
+  }
+
+  /* Soft candlelit glow ring used on interactive/magical elements */
+  .glow-accent {
+    box-shadow: 0 0 14px rgba(var(--accent-glow), 0.35);
+  }
+
+  /* Skip link for keyboard users */
+  .skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 100;
+  }
+  .skip-link:focus {
+    left: 1rem;
+    top: 1rem;
+  }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* =========================================================================
+   Motion keyframes (each effect must ship a reduced-motion variant below)
+   ========================================================================= */
+
+@keyframes wiz-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes wiz-candle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.78;
+  }
+  70% {
+    opacity: 0.92;
+  }
+}
+
+@keyframes wiz-unfurl {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scaleY(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes wiz-think {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* =========================================================================
+   Reduced motion — neutralize every animation/transition (WCAG 2.1 AA)
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
