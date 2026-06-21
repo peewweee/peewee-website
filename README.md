@@ -8,9 +8,9 @@ interactive 3D castle that serves as the navigation.
 > **Guiding principle:** the theme is a wrapper; the substance is real. Projects, resume,
 > and contact stay fast, scannable, and accessible — a recruiter has ~30 seconds.
 
-This repo is currently at the end of **Phase 1 (content site)** — a complete, shippable
-portfolio. The 3D castle, the live AI Hat, and the atmosphere effects are scaffolded as
-clean, typed **stubs** ready for Phases 2–4.
+**Phases 0–2 are complete:** the shippable content site **and** the interactive 3D castle
+navigation hub (React Three Fiber). The live AI Hat (Phase 3) and atmosphere effects
+(Phase 4) are scaffolded as clean, typed **stubs**.
 
 ---
 
@@ -70,16 +70,31 @@ No API keys are required to run Phase 1. The AI and email features are stubbed (
 - **House theming works**: set `data-house="gryffindor|slytherin|ravenclaw|hufflepuff"` on
   any subtree to swap the accent (each project card already themes itself by house).
 
+**Phase 2 — 3D castle navigation hub**
+
+- An original **low-poly castle built procedurally** in React Three Fiber (no external glTF,
+  no IP risk) — five glowing towers as nav, starfield sky, bloom postprocessing, and a
+  subtle pointer-parallax camera. See [`components/castle`](components/castle).
+- **Tower interaction**: hover lifts the glow; click glides the camera and routes. DOM label
+  chips (drei `<Html>`) are keyboard-focusable.
+- **Token-driven**: the scene reads the design tokens at runtime
+  ([`lib/tokens.ts`](lib/tokens.ts)) so gold/glow/night-sky colors match the DOM and follow
+  `data-house`.
+- **Lazy + accessible**: the three.js bundle is code-split and loaded only on eligible
+  devices (desktop pointer + WebGL + motion allowed + opt-in), after first paint — it is
+  **not** in the home page's First Load JS. The 2D castle + the always-present accessible
+  tower nav cover mobile / weak GPU / no-WebGL / reduced-motion, and a **2D/3D toggle** +
+  error boundary let anyone fall back.
+
 ### Scaffolded stubs (clean typed interfaces + TODOs)
 
-| Area                  | Stub                                                    | Notes                                                                                                                  |
-| --------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 3D castle (Phase 2)   | [`CastleHub`](components/castle/castle-hub.tsx)         | Renders the 2D fallback (decorative SVG castle + accessible tower-link grid). Documented props; marked 3D mount point. |
-| Sorting Hat (Phase 3) | [`SortingHat`](components/sorting-hat/sorting-hat.tsx)  | Chat-panel UI with a "thinking" state + citation chips; calls the stubbed `/api/ask`.                                  |
-| RAG (Phase 3)         | [`lib/rag`](lib/rag)                                    | Typed `ingest` / `retrieve` / `ask` stubs.                                                                             |
-| Ask API (Phase 3)     | [`/api/ask`](app/api/ask/route.ts)                      | Validates input, returns a stubbed grounded answer + citations.                                                        |
-| Music (Phase 4)       | [`MusicToggle`](components/atmosphere/music-toggle.tsx) | Default **OFF**, persisted, reduced-motion aware. No audio yet.                                                        |
-| Wand cursor (Phase 4) | [`WandCursor`](components/atmosphere/wand-cursor.tsx)   | Desktop-only, reduced-motion aware, off switch. Lightweight follower preview.                                          |
+| Area                  | Stub                                                    | Notes                                                                                 |
+| --------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Sorting Hat (Phase 3) | [`SortingHat`](components/sorting-hat/sorting-hat.tsx)  | Chat-panel UI with a "thinking" state + citation chips; calls the stubbed `/api/ask`. |
+| RAG (Phase 3)         | [`lib/rag`](lib/rag)                                    | Typed `ingest` / `retrieve` / `ask` stubs.                                            |
+| Ask API (Phase 3)     | [`/api/ask`](app/api/ask/route.ts)                      | Validates input, returns a stubbed grounded answer + citations.                       |
+| Music (Phase 4)       | [`MusicToggle`](components/atmosphere/music-toggle.tsx) | Default **OFF**, persisted, reduced-motion aware. No audio yet.                       |
+| Wand cursor (Phase 4) | [`WandCursor`](components/atmosphere/wand-cursor.tsx)   | Desktop-only, reduced-motion aware, off switch. Lightweight follower preview.         |
 
 ---
 
@@ -98,13 +113,13 @@ app/
 components/
   ui/                     # button, input, textarea, label, badge, card, dialog
   atmosphere/             # music-toggle, wand-cursor (Phase 4 stubs)
-  castle/                 # castle-hub (Phase 2 stub → 2D fallback)
+  castle/                 # castle-hub (orchestrator) + castle-scene (R3F) + castle-fallback (2D)
   sorting-hat/            # sorting-hat chat UI (Phase 3 stub)
   site-header.tsx  site-footer.tsx  spellbook-card.tsx  page-header.tsx  mdx-content.tsx
 content/projects/         # MDX case studies
 lib/
   rag/                    # ingest / retrieve / ask (Phase 3 stubs) + types
-  site.ts  houses.ts  projects.ts  types.ts  utils.ts  use-preference.ts
+  site.ts  houses.ts  projects.ts  types.ts  utils.ts  use-preference.ts  tokens.ts
 docs/                     # PROJECT_DOCUMENTATION.md + Wizarding Design System.html (source of truth)
 contentlayer.config.ts  tailwind.config.ts  components.json
 ```
@@ -114,9 +129,9 @@ contentlayer.config.ts  tailwind.config.ts  components.json
 ## Design system
 
 `docs/Wizarding Design System.html` is the single source of truth. Tokens were ported
-verbatim. The 2D/3D boundary: **CSS/DOM owns all UI**; React Three Fiber will own the
-castle scene (Phase 2) and consumes shared tokens — gold `--accent` / `--accent-glow`,
-the per-house glow triplets, `--bg` / `--bg-sunken`, and the motion easings.
+verbatim. The 2D/3D boundary: **CSS/DOM owns all UI**; React Three Fiber owns the castle
+scene and consumes shared tokens — gold `--accent` / `--accent-glow`, the per-house glow
+triplets, `--bg` / `--bg-sunken` — read at runtime via [`lib/tokens.ts`](lib/tokens.ts).
 
 To re-theme a subtree by house:
 
@@ -145,13 +160,12 @@ real secrets.** Nothing here is needed for Phase 1.
 
 ---
 
-## Next steps (Phases 2–4)
+## Next steps (Phases 3–4)
 
-**Phase 2 — 3D nav hub.** In [`CastleHub`](components/castle/castle-hub.tsx), lazy-load an
-R3F `<CastleScene>` (`dynamic(..., { ssr: false })`) after first paint: original low-poly
-Draco-compressed glTF castle, glowing clickable towers → routes, camera glides on the
-shared easings, postprocessing **Bloom**. Keep the current 2D markup as the permanent
-fallback for mobile / weak GPU / no-WebGL / reduced-motion.
+**Phase 2 polish (optional).** The castle is procedural geometry. If you later want a
+richer model, drop an original Draco-compressed glTF into the scene (swap the meshes in
+[`castle-scene.tsx`](components/castle/castle-scene.tsx)) — the camera, hotspots, tokens,
+and fallback all stay as-is.
 
 **Phase 3 — the Hat (AI).** Add `GEMINI_API_KEY` + Upstash. Implement
 [`lib/rag`](lib/rag): ingest content → Upstash Vector; `/api/ask` retrieval + grounded
@@ -182,10 +196,12 @@ metadata, analytics.
 ## Tech & versions
 
 Next.js 14 · React 18 · TypeScript 5 · Tailwind CSS 3 · shadcn/ui-style components
-(Radix + cva) · Framer Motion · Contentlayer2 (MDX) · Zod · Lucide.
+(Radix + cva) · Framer Motion · React Three Fiber 8 + drei + postprocessing (three 0.169) ·
+Contentlayer2 (MDX) · Zod · Lucide.
 
 > **Stack notes:** Tailwind **v3** (the brief's `tailwind.config.ts` token mapping is v3's
 > model) and **`contentlayer2`** (the maintained fork; the original `contentlayer` is
-> unmaintained and breaks on modern Next.js). Both are deliberate stability picks within
-> the specified stack. `next dev` uses webpack (not Turbopack) so Contentlayer regenerates
-> on change.
+> unmaintained and breaks on modern Next.js). **React Three Fiber v8** (not v9, which
+> requires React 19) for React 18 compatibility. All deliberate stability picks within the
+> specified stack. `next dev` uses webpack (not Turbopack) so Contentlayer regenerates on
+> change.
