@@ -1,0 +1,12 @@
+.next
+out
+build
+node_modules
+.contentlayer
+package-lock.json
+pnpm-lock.yaml
+docs/Wizarding Design System.html
+
+# MDX content — Prettier's markdown formatter mangles JSX expression comments
+# ({/* … */} → {/_ … _/}), which breaks the MDX build. Keep content hand-formatted.
+content
