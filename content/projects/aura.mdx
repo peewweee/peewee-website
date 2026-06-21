@@ -1,0 +1,56 @@
+---
+title: "Aura"
+order: 1
+spell: "Divination"
+themedFraming: "Divination / crystal ball — see your financial future"
+summary: "AI financial-intelligence web app that turns messy spending input into structured data and personalized insights."
+problem: "People capture spending as unstructured notes and screenshots, then never get usable insight from it. The gap is between raw input and decisions."
+role: "Full-stack + AI engineer — designed the ingestion pipeline, the Gemini prompt/structuring layer, and the insights API."
+stack:
+  - "Java 21"
+  - "Spring Boot"
+  - "PostgreSQL"
+  - "Redis"
+  - "Gemini API"
+outcome: "Unstructured spending input is parsed into structured records and surfaced as personalized, on-demand financial insights."
+glyph: "🔮"
+house: "ravenclaw"
+status: "live"
+links:
+  - label: "GitHub"
+    href: "#"
+  - label: "Live demo"
+    href: "#"
+published: true
+---
+
+## The crystal ball
+
+> _Divination_ — gazing into raw numbers to reveal what they mean.
+
+Aura reads the unstructured way people actually record money — quick notes, pasted
+receipts, half-sentences — and turns it into structured, queryable financial data with
+personalized insight on top.
+
+## Problem
+
+People capture spending as unstructured text and never convert it into something they can
+act on. The hard part is the bridge from **raw input → structured data → decision**.
+
+## My role
+
+Full-stack and AI engineering: the ingestion pipeline, the Gemini-backed structuring layer
+(unstructured → typed records), caching with Redis, and the insights API.
+
+## How it works
+
+- **Spring Boot** service layer with **PostgreSQL** for durable structured storage.
+- **Gemini API** parses unstructured input into typed transactions and generates insights.
+- **Redis** caches model responses and hot reads to keep latency and cost down.
+
+## Outcome
+
+Messy input becomes structured records and personalized insights, available on demand.
+
+{/* TODO (Phoebe): add metrics (accuracy, latency, # of users/test runs), a screenshot
+or short demo clip, and real GitHub / demo links above. */}
