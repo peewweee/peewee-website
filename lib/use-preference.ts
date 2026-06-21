@@ -10,7 +10,7 @@ import * as React from "react";
  * SSR-safe: returns `defaultValue` until mounted, so the server and first client
  * render agree (avoids hydration mismatch).
  */
-export type PreferenceKey = "wiz:music" | "wiz:wand";
+export type PreferenceKey = "wiz:music" | "wiz:wand" | "wiz:castle3d";
 
 const EVENT = "wiz:preference-change";
 
@@ -80,4 +80,42 @@ export function useIsTouchDevice(): boolean {
     return () => mq.removeEventListener("change", onChange);
   }, []);
   return touch;
+}
+
+/** Whether the browser can create a WebGL context. SSR-safe (false until mounted). */
+export function useHasWebGL(): boolean {
+  const [ok, setOk] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      const canvas = document.createElement("canvas");
+      const gl =
+        canvas.getContext("webgl2") ||
+        canvas.getContext("webgl") ||
+        canvas.getContext("experimental-webgl");
+      setOk(!!gl);
+    } catch {
+      setOk(false);
+    }
+  }, []);
+  return ok;
+}
+
+/**
+ * Decide whether to render the 3D castle. 3D requires: a desktop (non-touch)
+ * pointer, WebGL, no reduced-motion preference, and the user's `wiz:castle3d`
+ * preference left on. Returns the decision plus the toggle + mount flag.
+ */
+export function useCastle3D(): {
+  show3D: boolean;
+  enabled: boolean;
+  setEnabled: (v: boolean) => void;
+  eligible: boolean;
+  mounted: boolean;
+} {
+  const [enabled, setEnabled, mounted] = usePreference("wiz:castle3d", true);
+  const reduced = usePrefersReducedMotion();
+  const touch = useIsTouchDevice();
+  const webgl = useHasWebGL();
+  const eligible = mounted && webgl && !touch && !reduced;
+  return { show3D: eligible && enabled, enabled, setEnabled, eligible, mounted };
 }
