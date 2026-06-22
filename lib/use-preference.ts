@@ -101,9 +101,10 @@ export function useHasWebGL(): boolean {
 }
 
 /**
- * Decide whether to render the 3D castle. 3D requires: a desktop (non-touch)
- * pointer, WebGL, no reduced-motion preference, and the user's `wiz:castle3d`
- * preference left on. Returns the decision plus the toggle + mount flag.
+ * Decide whether to render the 3D castle. Mobile gets the same 3D experience as
+ * desktop — so the only safety nets are: WebGL must be available, the user must
+ * not prefer reduced motion, and the `wiz:castle3d` preference is left on.
+ * Returns the decision plus the toggle + mount flag.
  */
 export function useCastle3D(): {
   show3D: boolean;
@@ -114,8 +115,7 @@ export function useCastle3D(): {
 } {
   const [enabled, setEnabled, mounted] = usePreference("wiz:castle3d", true);
   const reduced = usePrefersReducedMotion();
-  const touch = useIsTouchDevice();
   const webgl = useHasWebGL();
-  const eligible = mounted && webgl && !touch && !reduced;
+  const eligible = mounted && webgl && !reduced;
   return { show3D: eligible && enabled, enabled, setEnabled, eligible, mounted };
 }
