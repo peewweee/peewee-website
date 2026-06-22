@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Box, Boxes, ChevronDown, Sparkles } from "lucide-react";
 
-import { navItems, siteConfig } from "@/lib/site";
+import { navItems } from "@/lib/site";
 import type { NavItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useCastle3D } from "@/lib/use-preference";
@@ -65,6 +65,7 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
   const descendRef = React.useRef(0);
   const invalidateRef = React.useRef<() => void>(() => {});
   const navigatedRef = React.useRef(false);
+  const titleRef = React.useRef<HTMLDivElement>(null);
 
   // Always begin at the top so the dive starts from the wide framing.
   React.useEffect(() => {
@@ -72,8 +73,8 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
   }, []);
 
   // Scroll → slowly fly the camera into the Great Hall's window (scrubbed by
-  // scroll). Near the end the dark "window interior" fades in, then we navigate
-  // and the Great Hall grows out of the window.
+  // scroll), fading the title out. Near the end the bright-yellow window glow
+  // fills the screen, then we navigate to /great-hall.
   React.useEffect(() => {
     if (!show3D) return;
     const section = sectionRef.current;
@@ -85,6 +86,9 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       const total = rect.height - window.innerHeight;
       const d = total > 0 ? clamp01(-rect.top / total) : 0;
       descendRef.current = d;
+      if (titleRef.current) {
+        titleRef.current.style.opacity = String(1 - smoothstep(0, 0.22, d));
+      }
       if (!navigatedRef.current) {
         setPortal(smoothstep(0.88, 1, d));
       }
@@ -149,13 +153,13 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
           )}
         </div>
 
-        {/* Title overlay */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-center px-4 pt-[12vh] text-center">
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-accent-text">
-            {siteConfig.name}
-          </p>
-          <h1 className="mt-3 font-display text-4xl font-bold uppercase tracking-wide text-foreground [text-shadow:0_2px_24px_rgba(0,0,0,0.65)] sm:text-6xl">
-            Welcome to my Castle
+        {/* Title overlay — top-left, high enough to clear the castle; fades on scroll */}
+        <div
+          ref={titleRef}
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-[4vh] sm:px-10"
+        >
+          <h1 className="font-display text-4xl font-bold text-foreground [text-shadow:0_2px_24px_rgba(0,0,0,0.7)] sm:text-6xl">
+            Welcome, wizard!
           </h1>
         </div>
 

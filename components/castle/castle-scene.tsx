@@ -52,17 +52,12 @@ const TOWERS: { position: Vec3; height: number; radius: number }[] = [
 ];
 
 // Route → its structure. `win` = offset (from the plateau-base center `c`) of an
-// actual LIT window; `cam` = where the camera ends relative to that window. The
-// towers' windows sit on the front (+z) face; the Great Hall's are on its left
-// (-x) side, so it aims sideways. Used to fly INTO the window (forward) and to
-// start the "back to castle" intro zoomed on it.
+// actual LIT window; `cam` = where the camera ends relative to that window. All
+// windows here sit on the front (+z) face, so the camera flies straight in.
+// Used to fly INTO the window (forward) and to start the "back to castle" intro.
 const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; win: Vec3; cam: Vec3 }> = {
-  // Great Hall — a left-side window (x = -width/2), aimed at from the left-front.
-  "/great-hall": {
-    c: [-6.6, LEFT_TOP, 0.3],
-    win: [-1.33, 1.25, 1.2],
-    cam: [-1.3, 0.15, 0.6],
-  },
+  // Great Hall — the window on the front tower (DecoTower at z = depth/2 + 0.1).
+  "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], win: [0, 1.4, 3.41], cam: [0, 0, 0.65] },
   // Towers — a mid window on the front face (y = height*0.5, z = radius*0.92).
   "/projects": { c: [-4.0, LEFT_TOP, -0.3], win: [0, 2.6, 1.06], cam: [0, 0, 0.62] },
   "/about": { c: [5.6, RIGHT_TOP, 0.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.56] },
@@ -217,17 +212,21 @@ function Glow({
   color = WARM,
   intensity = 1.4,
   rotation,
+  register,
 }: {
   position: Vec3;
   size?: Vec3;
   color?: string;
   intensity?: number;
   rotation?: Vec3;
+  /** Collect the material so a parent can animate its glow (e.g. on hover). */
+  register?: (m: THREE.MeshStandardMaterial | null) => void;
 }) {
   return (
     <mesh position={position} rotation={rotation}>
       <boxGeometry args={size} />
       <meshStandardMaterial
+        ref={register}
         color={color}
         emissive={color}
         emissiveIntensity={intensity}
@@ -276,6 +275,7 @@ function DecoTower({
   crenel = false,
   windows = 0,
   band = false,
+  registerWindow,
 }: {
   position: Vec3;
   radius: number;
@@ -285,6 +285,7 @@ function DecoTower({
   crenel?: boolean;
   windows?: number;
   band?: boolean;
+  registerWindow?: (m: THREE.MeshStandardMaterial | null) => void;
 }) {
   const coneH = radius * 2.6;
   return (
@@ -316,7 +317,11 @@ function DecoTower({
         />
       </mesh>
       {Array.from({ length: windows }).map((_, i) => (
-        <Glow key={i} position={[0, height * 0.32 + i * 0.5, radius * 0.92]} />
+        <Glow
+          key={i}
+          position={[0, height * 0.32 + i * 0.5, radius * 0.92]}
+          register={registerWindow}
+        />
       ))}
     </group>
   );
@@ -362,6 +367,7 @@ function GableHall({
   steep = 0.5,
   coverFront = false,
   bothSides = false,
+  registerWindow,
 }: {
   position: Vec3;
   rotation?: Vec3;
@@ -375,6 +381,7 @@ function GableHall({
   steep?: number;
   coverFront?: boolean;
   bothSides?: boolean;
+  registerWindow?: (m: THREE.MeshStandardMaterial | null) => void;
 }) {
   const rh = width * steep;
   const hw = width / 2;
@@ -422,11 +429,13 @@ function GableHall({
             <Glow
               position={[width / 2 + 0.03, height * 0.5, z]}
               size={[0.06, 0.5, 0.18]}
+              register={registerWindow}
             />
             {bothSides && (
               <Glow
                 position={[-width / 2 - 0.03, height * 0.5, z]}
                 size={[0.06, 0.5, 0.18]}
+                register={registerWindow}
               />
             )}
           </React.Fragment>
@@ -1066,6 +1075,23 @@ function GreatHallBuilding({
     invalidate();
   }, [hovered]);
 
+  // Collect the hall's window materials so they brighten on hover (like a tower).
+  const winRefs = React.useRef<THREE.MeshStandardMaterial[]>([]);
+  const registerWindow = React.useCallback((m: THREE.MeshStandardMaterial | null) => {
+    if (m && !winRefs.current.includes(m)) winRefs.current.push(m);
+  }, []);
+  useFrame(() => {
+    const target = hovered ? 2.6 : 1.4;
+    let moving = false;
+    for (const m of winRefs.current) {
+      if (!m) continue;
+      const d = target - m.emissiveIntensity;
+      m.emissiveIntensity += d * 0.15;
+      if (Math.abs(d) > 0.01) moving = true;
+    }
+    if (moving) invalidate();
+  });
+
   const width = 2.6;
   const depth = 5.6;
   const height = 2.5;
@@ -1094,6 +1120,7 @@ function GreatHallBuilding({
         steep={0.75}
         coverFront
         bothSides
+        registerWindow={registerWindow}
       />
       {/* tower connected to the front end of the hall */}
       <DecoTower
@@ -1103,6 +1130,7 @@ function GreatHallBuilding({
         body={WHITE}
         roof={SLATE}
         windows={2}
+        registerWindow={registerWindow}
       />
 
       <Html position={[0, height + rh + 1.4, depth / 2]} center zIndexRange={[20, 0]}>
@@ -1223,7 +1251,7 @@ function Tower({
   }, [hovered]);
 
   useFrame(() => {
-    const roofTarget = hovered ? 1.5 : 0.15;
+    const roofTarget = hovered ? 1.5 : 0;
     const winTarget = hovered ? 2.3 : 1.2;
     let moving = false;
     if (roofRef.current) {
@@ -1281,7 +1309,7 @@ function Tower({
           color={SLATE}
           map={roofTexture()}
           emissive={theme.accent}
-          emissiveIntensity={0.15}
+          emissiveIntensity={0}
           roughness={0.6}
           metalness={0.2}
         />
