@@ -402,6 +402,47 @@ function RightCliff() {
   );
 }
 
+/** A wide rectangular wing sitting on the bridge deck (windowed, flat roof). */
+function DeckWing({
+  x,
+  deckTop,
+  width,
+  height,
+  depth = 1.3,
+}: {
+  x: number;
+  deckTop: number;
+  width: number;
+  height: number;
+  depth?: number;
+}) {
+  const winCount = Math.max(2, Math.round(width / 0.95));
+  return (
+    <group position={[x, deckTop, 0]}>
+      <mesh position={[0, height / 2, 0]}>
+        <boxGeometry args={[width, height, depth]} />
+        <meshStandardMaterial color={WHITE} roughness={0.85} />
+      </mesh>
+      {/* flat roof cap */}
+      <mesh position={[0, height + 0.08, 0]}>
+        <boxGeometry args={[width + 0.12, 0.16, depth + 0.14]} />
+        <meshStandardMaterial color={SLATE_DK} roughness={0.8} />
+      </mesh>
+      {/* glowing window row on the front face */}
+      {Array.from({ length: winCount }).map((_, i) => {
+        const wx = -width / 2 + (width / (winCount + 1)) * (i + 1);
+        return (
+          <Glow
+            key={i}
+            position={[wx, height * 0.5, depth / 2 + 0.03]}
+            size={[0.16, 0.42, 0.06]}
+          />
+        );
+      })}
+    </group>
+  );
+}
+
 /** Double-decker arched viaduct (five arches) connecting the two plateaus. */
 function Viaduct({ position = [0, 0, 0] as Vec3 }: { position?: Vec3 }) {
   return (
@@ -418,6 +459,20 @@ function Viaduct({ position = [0, 0, 0] as Vec3 }: { position?: Vec3 }) {
         <boxGeometry args={[LOWER_TIER.totalW + 0.5, 0.18, BRIDGE_DEPTH + 0.6]} />
         <meshStandardMaterial color={WHITE_DK} roughness={0.85} />
       </mesh>
+
+      {/* Two wide rectangular wings filling the deck, joining both clusters */}
+      <DeckWing
+        x={-1.7}
+        deckTop={BRIDGE_BOTTOM + 2.1 + 0.9 + 0.18}
+        width={3.7}
+        height={2.2}
+      />
+      <DeckWing
+        x={1.8}
+        deckTop={BRIDGE_BOTTOM + 2.1 + 0.9 + 0.18}
+        width={3.5}
+        height={1.5}
+      />
     </group>
   );
 }
