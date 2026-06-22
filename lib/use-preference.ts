@@ -93,6 +93,11 @@ export function useHasWebGL(): boolean {
         canvas.getContext("webgl") ||
         canvas.getContext("experimental-webgl");
       setOk(!!gl);
+      // Release the detection context immediately so it never counts against the
+      // browser's WebGL context limit (the real Canvas creates its own).
+      (gl as WebGLRenderingContext | null)
+        ?.getExtension("WEBGL_lose_context")
+        ?.loseContext();
     } catch {
       setOk(false);
     }
