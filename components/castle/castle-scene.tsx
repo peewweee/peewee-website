@@ -21,12 +21,12 @@ type Vec3 = [number, number, number];
 /* ----------------------------------------------------------------------------
    Palette
    ---------------------------------------------------------------------------- */
-const WHITE = "#eef1f8";
-const WHITE_DK = "#ccd2e6";
+const WHITE = "#8d7150"; // old-brown Hogwarts stone (name kept for reach)
+const WHITE_DK = "#6f5839"; // shadowed brown stone
 const PURPLE = "#4a3f8e";
 const PURPLE_DK = "#352b66";
-const SLATE = "#5a6172";
-const SLATE_DK = "#39404f";
+const SLATE = "#34373d"; // dark-gray roof slate
+const SLATE_DK = "#26282d"; // darker roof slate
 const ROCK = "#474d60";
 const ROCK_DK = "#313749";
 const ROCK_LT = "#565d72";
@@ -42,13 +42,13 @@ const WATER_Y = -3.2;
 const LEFT_TOP = 0.7;
 const RIGHT_TOP = 0.2;
 
-/* Interactive nav towers (index 1..4 of navItems). Index 0 (Great Hall) is a
-   building, handled separately. Each tower sits on its plateau top. */
+/* Interactive nav towers (Projects/About/Resume). Index 0 (Great Hall) is a
+   building, handled separately; Contact lives in the header nav. Each tower
+   sits on its plateau top. */
 const TOWERS: { position: Vec3; height: number; radius: number }[] = [
   { position: [-4.0, LEFT_TOP, -0.3], height: 5.2, radius: 1.15 }, // Projects — Main Astronomy Tower (tallest, thickest)
   { position: [5.6, RIGHT_TOP, 0.4], height: 3.4, radius: 0.8 }, // About — Main Right Tower
   { position: [2.4, RIGHT_TOP, 0.7], height: 2.7, radius: 0.62 }, // Resume — Castellated Bridge Tower
-  { position: [-6.9, LEFT_TOP, 1.7], height: 2.3, radius: 0.5 }, // Contact — Small Forward Turret
 ];
 
 // Camera: low, three-quarter front-LEFT (left close & prominent, right recedes).
@@ -91,6 +91,84 @@ const BRIDGE_BOTTOM = -3.0;
 const LOWER_TIER = makeArchWall(5, 0.95, 0.42, 2.1); // five tall open arches
 const UPPER_TIER = makeArchWall(10, 0.42, 0.22, 0.9);
 const EXTRUDE = { depth: BRIDGE_DEPTH, bevelEnabled: false } as const;
+
+/* ----------------------------------------------------------------------------
+   Procedural textures (canvas) — brick for the castle, tiled slate for roofs,
+   mottled rock for the cliffs. Built lazily on the client; shared via cache.
+   ---------------------------------------------------------------------------- */
+let _brick: THREE.Texture | null = null;
+let _roof: THREE.Texture | null = null;
+let _rock: THREE.Texture | null = null;
+
+function brickTexture(): THREE.Texture | undefined {
+  if (typeof document === "undefined") return undefined;
+  if (_brick) return _brick;
+  const s = 128;
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = s;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return undefined;
+  ctx.fillStyle = "#c4c4c4"; // mortar (neutral; tinted by material color)
+  ctx.fillRect(0, 0, s, s);
+  ctx.fillStyle = "#f2f2f2"; // brick (neutral; tinted by material color)
+  const bh = s / 8;
+  const bw = s / 4;
+  for (let row = 0; row < 8; row++) {
+    const off = row % 2 ? -bw / 2 : 0;
+    for (let col = -1; col < 5; col++) {
+      ctx.fillRect(col * bw + off + 1.5, row * bh + 1.5, bw - 3, bh - 3);
+    }
+  }
+  _brick = new THREE.CanvasTexture(cv);
+  _brick.wrapS = _brick.wrapT = THREE.RepeatWrapping;
+  _brick.repeat.set(2, 3);
+  return _brick;
+}
+
+function roofTexture(): THREE.Texture | undefined {
+  if (typeof document === "undefined") return undefined;
+  if (_roof) return _roof;
+  const s = 128;
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = s;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return undefined;
+  ctx.fillStyle = "#cacaca";
+  ctx.fillRect(0, 0, s, s);
+  ctx.strokeStyle = "rgba(20,20,20,0.5)";
+  ctx.lineWidth = 2;
+  for (let y = 0; y <= s; y += s / 8) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(s, y);
+    ctx.stroke();
+  }
+  _roof = new THREE.CanvasTexture(cv);
+  _roof.wrapS = _roof.wrapT = THREE.RepeatWrapping;
+  _roof.repeat.set(3, 4);
+  return _roof;
+}
+
+function rockTexture(): THREE.Texture | undefined {
+  if (typeof document === "undefined") return undefined;
+  if (_rock) return _rock;
+  const s = 128;
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = s;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return undefined;
+  ctx.fillStyle = "#474d60";
+  ctx.fillRect(0, 0, s, s);
+  for (let i = 0; i < 1600; i++) {
+    const v = 45 + Math.floor(Math.random() * 55);
+    ctx.fillStyle = `rgba(${v},${v + 6},${v + 22},0.5)`;
+    ctx.fillRect(Math.random() * s, Math.random() * s, 2, 2);
+  }
+  _rock = new THREE.CanvasTexture(cv);
+  _rock.wrapS = _rock.wrapT = THREE.RepeatWrapping;
+  _rock.repeat.set(2, 2);
+  return _rock;
+}
 
 /* ============================================================================
    Reusable detail pieces
@@ -176,12 +254,12 @@ function DecoTower({
     <group position={position}>
       <mesh position={[0, height / 2, 0]}>
         <cylinderGeometry args={[radius * 0.9, radius, height, 14]} />
-        <meshStandardMaterial color={body} roughness={0.85} />
+        <meshStandardMaterial color={body} roughness={0.85} map={brickTexture()} />
       </mesh>
       {band && (
         <mesh position={[0, height - 0.25, 0]}>
           <cylinderGeometry args={[radius * 0.96, radius * 0.96, 0.2, 14]} />
-          <meshStandardMaterial color={roof} roughness={0.8} />
+          <meshStandardMaterial color={roof} roughness={0.8} map={roofTexture()} />
         </mesh>
       )}
       {crenel && (
@@ -193,7 +271,12 @@ function DecoTower({
       )}
       <mesh position={[0, height + coneH / 2, 0]}>
         <coneGeometry args={[radius * 1.15, coneH, 16]} />
-        <meshStandardMaterial color={roof} roughness={0.7} metalness={0.1} />
+        <meshStandardMaterial
+          color={roof}
+          roughness={0.7}
+          metalness={0.1}
+          map={roofTexture()}
+        />
       </mesh>
       {Array.from({ length: windows }).map((_, i) => (
         <Glow key={i} position={[0, height * 0.32 + i * 0.5, radius * 0.92]} />
@@ -219,11 +302,11 @@ function Spire({
     <group position={position}>
       <mesh position={[0, height / 2, 0]}>
         <cylinderGeometry args={[radius * 0.85, radius, height, 10]} />
-        <meshStandardMaterial color={body} roughness={0.85} />
+        <meshStandardMaterial color={body} roughness={0.85} map={brickTexture()} />
       </mesh>
       <mesh position={[0, height + radius * 1.6, 0]}>
         <coneGeometry args={[radius * 1.2, radius * 3.2, 12]} />
-        <meshStandardMaterial color={roof} roughness={0.7} />
+        <meshStandardMaterial color={roof} roughness={0.7} map={roofTexture()} />
       </mesh>
     </group>
   );
@@ -240,6 +323,8 @@ function GableHall({
   windows = 6,
   ridgeSpireCount = 4,
   steep = 0.5,
+  coverFront = false,
+  bothSides = false,
 }: {
   position: Vec3;
   rotation?: Vec3;
@@ -251,39 +336,69 @@ function GableHall({
   windows?: number;
   ridgeSpireCount?: number;
   steep?: number;
+  coverFront?: boolean;
+  bothSides?: boolean;
 }) {
   const rh = width * steep;
   const hw = width / 2;
   const slope = Math.sqrt(hw * hw + rh * rh);
   const ang = Math.atan2(rh, hw);
+  const gable = React.useMemo(() => {
+    const sp = new THREE.Shape();
+    sp.moveTo(-hw, 0);
+    sp.lineTo(hw, 0);
+    sp.lineTo(0, rh);
+    sp.closePath();
+    return sp;
+  }, [hw, rh]);
   return (
     <group position={position} rotation={rotation}>
       <mesh position={[0, height / 2, 0]}>
         <boxGeometry args={[width, height, depth]} />
-        <meshStandardMaterial color={body} roughness={0.85} />
+        <meshStandardMaterial color={body} roughness={0.85} map={brickTexture()} />
       </mesh>
       <mesh position={[-hw / 2, height + rh / 2, 0]} rotation={[0, 0, ang]}>
         <boxGeometry args={[slope, 0.14, depth + 0.12]} />
-        <meshStandardMaterial color={roof} roughness={0.7} />
+        <meshStandardMaterial color={roof} roughness={0.7} map={roofTexture()} />
       </mesh>
       <mesh position={[hw / 2, height + rh / 2, 0]} rotation={[0, 0, -ang]}>
         <boxGeometry args={[slope, 0.14, depth + 0.12]} />
-        <meshStandardMaterial color={roof} roughness={0.7} />
+        <meshStandardMaterial color={roof} roughness={0.7} map={roofTexture()} />
       </mesh>
+      {/* solid triangular wall closing the front gable */}
+      {coverFront && (
+        <mesh position={[0, height, depth / 2 + 0.07]}>
+          <shapeGeometry args={[gable]} />
+          <meshStandardMaterial
+            color={body}
+            roughness={0.85}
+            side={THREE.DoubleSide}
+            map={brickTexture()}
+          />
+        </mesh>
+      )}
+      {/* horizontal window row along the side(s) */}
       {Array.from({ length: windows }).map((_, i) => {
         const z = -depth / 2 + (depth / (windows + 1)) * (i + 1);
         return (
-          <Glow
-            key={i}
-            position={[width / 2 + 0.03, height * 0.5, z]}
-            size={[0.06, 0.5, 0.18]}
-          />
+          <React.Fragment key={i}>
+            <Glow
+              position={[width / 2 + 0.03, height * 0.5, z]}
+              size={[0.06, 0.5, 0.18]}
+            />
+            {bothSides && (
+              <Glow
+                position={[-width / 2 - 0.03, height * 0.5, z]}
+                size={[0.06, 0.5, 0.18]}
+              />
+            )}
+          </React.Fragment>
         );
       })}
       {Array.from({ length: ridgeSpireCount }).map((_, i, arr) => {
         const z = -depth / 2 + (depth / (arr.length + 1)) * (i + 1);
         return (
-          <mesh key={i} position={[0, height + rh + 0.22, z]}>
+          <mesh key={`s${i}`} position={[0, height + rh + 0.22, z]}>
             <coneGeometry args={[0.1, 0.6, 6]} />
             <meshStandardMaterial color={WHITE_DK} roughness={0.8} />
           </mesh>
@@ -344,7 +459,7 @@ function Rock({
   return (
     <mesh position={position} scale={scale}>
       <icosahedronGeometry args={[1, 1]} />
-      <meshStandardMaterial color={color} flatShading roughness={1} />
+      <meshStandardMaterial color={color} flatShading roughness={1} map={rockTexture()} />
     </mesh>
   );
 }
@@ -370,7 +485,7 @@ function Plateau({
   return (
     <mesh position={[cx, top - h / 2, cz]}>
       <cylinderGeometry args={[rTop, rBot, h, 8]} />
-      <meshStandardMaterial color={color} flatShading roughness={1} />
+      <meshStandardMaterial color={color} flatShading roughness={1} map={rockTexture()} />
     </mesh>
   );
 }
@@ -402,7 +517,9 @@ function RightCliff() {
   );
 }
 
-/** A wide rectangular wing sitting on the bridge deck (windowed, flat roof). */
+/** A wide rectangular wing on the bridge deck (windowed) with a pitched gable
+ *  roof whose ridge runs left↔right — so the triangular gable ends face ±X and
+ *  the front camera sees the sloped side. */
 function DeckWing({
   x,
   deckTop,
@@ -417,16 +534,24 @@ function DeckWing({
   depth?: number;
 }) {
   const winCount = Math.max(2, Math.round(width / 0.95));
+  const rise = depth * 0.6;
+  const hd = depth / 2;
+  const slope = Math.sqrt(hd * hd + rise * rise);
+  const ang = Math.atan2(rise, hd);
   return (
     <group position={[x, deckTop, 0]}>
       <mesh position={[0, height / 2, 0]}>
         <boxGeometry args={[width, height, depth]} />
-        <meshStandardMaterial color={WHITE} roughness={0.85} />
+        <meshStandardMaterial color={WHITE} roughness={0.85} map={brickTexture()} />
       </mesh>
-      {/* flat roof cap */}
-      <mesh position={[0, height + 0.08, 0]}>
-        <boxGeometry args={[width + 0.12, 0.16, depth + 0.14]} />
-        <meshStandardMaterial color={SLATE_DK} roughness={0.8} />
+      {/* gable roof — two slopes meeting at a ridge along X */}
+      <mesh position={[0, height + rise / 2, -hd / 2]} rotation={[-ang, 0, 0]}>
+        <boxGeometry args={[width + 0.12, 0.14, slope + 0.06]} />
+        <meshStandardMaterial color={SLATE} roughness={0.7} map={roofTexture()} />
+      </mesh>
+      <mesh position={[0, height + rise / 2, hd / 2]} rotation={[ang, 0, 0]}>
+        <boxGeometry args={[width + 0.12, 0.14, slope + 0.06]} />
+        <meshStandardMaterial color={SLATE} roughness={0.7} map={roofTexture()} />
       </mesh>
       {/* glowing window row on the front face */}
       {Array.from({ length: winCount }).map((_, i) => {
@@ -457,7 +582,7 @@ function Viaduct({ position = [0, 0, 0] as Vec3 }: { position?: Vec3 }) {
       </mesh>
       <mesh position={[0, BRIDGE_BOTTOM + 2.1 + 0.9 + 0.09, 0]}>
         <boxGeometry args={[LOWER_TIER.totalW + 0.5, 0.18, BRIDGE_DEPTH + 0.6]} />
-        <meshStandardMaterial color={WHITE_DK} roughness={0.85} />
+        <meshStandardMaterial color={WHITE_DK} roughness={0.85} map={brickTexture()} />
       </mesh>
 
       {/* Two wide rectangular wings filling the deck, joining both clusters */}
@@ -677,11 +802,11 @@ function CastleBackdrop() {
       <group position={[-2.8, LEFT_TOP, -2.3]}>
         <mesh position={[0, 1, 0]}>
           <boxGeometry args={[2.4, 2, 2.2]} />
-          <meshStandardMaterial color={WHITE_DK} roughness={0.85} />
+          <meshStandardMaterial color={WHITE_DK} roughness={0.85} map={brickTexture()} />
         </mesh>
         <mesh position={[0, 2.05, 0]}>
           <boxGeometry args={[2.6, 0.18, 2.4]} />
-          <meshStandardMaterial color={SLATE_DK} roughness={0.8} />
+          <meshStandardMaterial color={SLATE_DK} roughness={0.8} map={roofTexture()} />
         </mesh>
         <Glow position={[0.7, 1.0, 1.12]} />
         <Glow position={[-0.7, 1.0, 1.12]} />
@@ -738,11 +863,11 @@ function CastleBackdrop() {
       <group position={[9.7, RIGHT_TOP, -0.4]}>
         <mesh position={[0, 1.0, 0]}>
           <boxGeometry args={[0.7, 2.0, 0.7]} />
-          <meshStandardMaterial color={WHITE_DK} roughness={0.85} />
+          <meshStandardMaterial color={WHITE_DK} roughness={0.85} map={brickTexture()} />
         </mesh>
         <mesh position={[0, 2.4, 0]}>
           <coneGeometry args={[0.6, 0.8, 4]} />
-          <meshStandardMaterial color={SLATE} roughness={0.7} />
+          <meshStandardMaterial color={SLATE} roughness={0.7} map={roofTexture()} />
         </mesh>
         <Glow position={[0, 1.2, 0.36]} size={[0.08, 0.4, 0.05]} />
       </group>
@@ -751,15 +876,15 @@ function CastleBackdrop() {
       <group position={[1.2, WATER_Y, 3.4]}>
         <mesh position={[0, 0.5, 0]}>
           <boxGeometry args={[1.4, 1, 1.7]} />
-          <meshStandardMaterial color={WHITE} roughness={0.85} />
+          <meshStandardMaterial color={WHITE} roughness={0.85} map={brickTexture()} />
         </mesh>
         <mesh position={[-0.38, 1.32, 0]} rotation={[0, 0, 0.82]}>
           <boxGeometry args={[1.25, 0.12, 1.8]} />
-          <meshStandardMaterial color={SLATE} roughness={0.7} />
+          <meshStandardMaterial color={SLATE} roughness={0.7} map={roofTexture()} />
         </mesh>
         <mesh position={[0.38, 1.32, 0]} rotation={[0, 0, -0.82]}>
           <boxGeometry args={[1.25, 0.12, 1.8]} />
-          <meshStandardMaterial color={SLATE} roughness={0.7} />
+          <meshStandardMaterial color={SLATE} roughness={0.7} map={roofTexture()} />
         </mesh>
         {/* narrow tower from the peak */}
         <Spire
@@ -826,6 +951,8 @@ function GreatHallBuilding({
         windows={6}
         ridgeSpireCount={4}
         steep={0.75}
+        coverFront
+        bothSides
       />
       {/* tower connected to the front end of the hall */}
       <DecoTower
@@ -957,7 +1084,7 @@ function Tower({
   }, [hovered]);
 
   useFrame(() => {
-    const roofTarget = hovered ? 1.6 : 0.5;
+    const roofTarget = hovered ? 1.5 : 0.15;
     const winTarget = hovered ? 2.3 : 1.2;
     let moving = false;
     if (roofRef.current) {
@@ -993,7 +1120,12 @@ function Tower({
     >
       <mesh position={[0, height / 2, 0]}>
         <cylinderGeometry args={[radius * 0.86, radius, height, 16]} />
-        <meshStandardMaterial color={WHITE} roughness={0.85} metalness={0.04} />
+        <meshStandardMaterial
+          color={WHITE}
+          roughness={0.85}
+          metalness={0.04}
+          map={brickTexture()}
+        />
       </mesh>
 
       <Crenellations
@@ -1007,11 +1139,12 @@ function Tower({
         <coneGeometry args={[radius * 1.2, coneH, 18]} />
         <meshStandardMaterial
           ref={roofRef}
-          color={theme.accent}
+          color={SLATE}
+          map={roofTexture()}
           emissive={theme.accent}
-          emissiveIntensity={0.5}
-          roughness={0.45}
-          metalness={0.35}
+          emissiveIntensity={0.15}
+          roughness={0.6}
+          metalness={0.2}
         />
       </mesh>
       {[-0.16, 0, 0.16].map((x, i) => (
