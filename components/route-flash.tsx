@@ -26,14 +26,13 @@ export function RouteFlash() {
     if (!warped) return;
     const el = document.getElementById("wiz-castle-flash");
     if (!el) return;
-    // Snap to white (it should already be white from the warp), then fade out.
+    // Snap to white (it should already be white from the warp), then fade out
+    // immediately — no hold.
     el.style.transition = "none";
     el.style.opacity = "1";
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        el.style.transition = "opacity 0.55s ease";
-        el.style.opacity = "0";
-      });
+      el.style.transition = "opacity 0.3s ease";
+      el.style.opacity = "0";
     });
   }, [pathname]);
 

@@ -8,6 +8,7 @@ import { ConditionalFooter } from "@/components/conditional-footer";
 import { SortingHat } from "@/components/sorting-hat/sorting-hat";
 import { Atmosphere } from "@/components/atmosphere/atmosphere";
 import { RouteFlash } from "@/components/route-flash";
+import { BackToCastle } from "@/components/back-to-castle";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SortingHat />
         <Atmosphere />
         <RouteFlash />
+        <BackToCastle />
       </body>
     </html>
   );

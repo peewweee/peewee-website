@@ -50,6 +50,24 @@ const TOWERS: { position: Vec3; height: number; radius: number }[] = [
   { position: [2.4, RIGHT_TOP, 0.7], height: 2.7, radius: 0.62 }, // Resume — Castellated Bridge Tower
 ];
 
+// Route → the structure it maps to — used by the "back to castle" intro, which
+// starts the camera zoomed in on that structure and pulls out to the wide view.
+const STRUCTURE_BY_ROUTE: Record<string, Vec3> = {
+  "/great-hall": [-6.6, LEFT_TOP, 0.3],
+  "/projects": [-4.0, LEFT_TOP, -0.3],
+  "/about": [5.6, RIGHT_TOP, 0.4],
+  "/resume": [2.4, RIGHT_TOP, 0.7],
+  "/contact": [1.2, WATER_Y + 0.6, 3.4],
+};
+
+/** The close-up camera pose for a structure (shared by warp-in and intro-out). */
+function zoomPose(p: Vec3) {
+  return {
+    pos: new THREE.Vector3(p[0] * 0.92, p[1] + 2.2, p[2] + 4.2),
+    look: new THREE.Vector3(p[0], p[1] + 1.6, p[2]),
+  };
+}
+
 // Camera: low, three-quarter front-LEFT (left close & prominent, right recedes).
 const WIDE_POS = new THREE.Vector3(-11, 2.6, 15.5);
 const WIDE_LOOK = new THREE.Vector3(1, 4, -2);
@@ -662,6 +680,8 @@ type FlyTarget = {
   duration: number;
   start: number | null;
   done: boolean;
+  /** Intro = zoom OUT from a tower to the wide view; no navigation, no flash. */
+  intro?: boolean;
 } | null;
 
 function SceneContents({
@@ -716,15 +736,43 @@ function SceneContents({
   const handleSelect = React.useCallback((item: NavItem, pos: THREE.Vector3) => {
     if (navigatedRef.current) return;
     navigatedRef.current = true;
+    const z = zoomPose([pos.x, pos.y, pos.z]);
     flyRef.current = {
       fromPos: new THREE.Vector3(),
       fromLook: new THREE.Vector3(),
-      toPos: new THREE.Vector3(pos.x * 0.92, pos.y + 2.2, pos.z + 4.2),
-      toLook: new THREE.Vector3(pos.x, pos.y + 1.6, pos.z),
+      toPos: z.pos,
+      toLook: z.look,
       href: item.href,
-      duration: 0.9,
+      duration: 0.8,
       start: null,
       done: false,
+    };
+    invalidate();
+  }, []);
+
+  // "Back to castle" intro: if we arrived from a content page (wiz:from), start
+  // the camera zoomed in on that page's structure, then pull out to the wide view.
+  React.useEffect(() => {
+    let from: string | null = null;
+    try {
+      from = sessionStorage.getItem("wiz:from");
+      if (from) sessionStorage.removeItem("wiz:from");
+    } catch {
+      /* ignore */
+    }
+    const p = from ? STRUCTURE_BY_ROUTE[from] : undefined;
+    if (!p) return;
+    const z = zoomPose(p);
+    flyRef.current = {
+      fromPos: z.pos,
+      fromLook: z.look,
+      toPos: WIDE_POS.clone(),
+      toLook: WIDE_LOOK.clone(),
+      href: "",
+      duration: 1.3,
+      start: null,
+      done: false,
+      intro: true,
     };
     invalidate();
   }, []);
@@ -1058,22 +1106,28 @@ function CameraRig({
     if (fly) {
       if (fly.start === null) {
         fly.start = state.clock.elapsedTime;
-        fly.fromPos.copy(cam.position);
-        fly.fromLook.copy(look.current);
+        // Forward warp starts from the current camera; the intro uses its preset
+        // (zoomed-in) pose.
+        if (!fly.intro) {
+          fly.fromPos.copy(cam.position);
+          fly.fromLook.copy(look.current);
+        }
       }
       const t = clamp01((state.clock.elapsedTime - fly.start) / fly.duration);
       const e = easeInOut(t);
       cam.position.lerpVectors(fly.fromPos, fly.toPos, e);
       look.current.lerpVectors(fly.fromLook, fly.toLook, e);
       moving = true;
-      // Bright flash fades in over the last ~45% of the zoom.
-      if (flashEl.current) {
+      // Forward warp: bright flash fades in over the last part of the zoom.
+      // (The intro's white is faded out by RouteFlash instead.)
+      if (flashEl.current && !fly.intro) {
         flashEl.current.style.transition = "none";
-        flashEl.current.style.opacity = String(smoothstep(0.55, 1, t));
+        flashEl.current.style.opacity = String(smoothstep(0.5, 0.95, t));
       }
       if (t >= 1 && !fly.done) {
         fly.done = true;
-        onArrive(fly.href);
+        if (fly.intro) flyRef.current = null;
+        else onArrive(fly.href);
       }
     } else {
       const d = clamp01(descendRef.current);
