@@ -3,6 +3,8 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { setPortal } from "@/components/portal-transition";
+
 /**
  * On any content page, scrolling UP while already at the top plays the bright
  * flash and returns to the home castle — which then opens zoomed in on the tower
@@ -24,18 +26,31 @@ export function BackToCastle() {
     const trigger = () => {
       if (fired) return;
       fired = true;
-      const flash = document.getElementById("wiz-castle-flash");
-      if (flash) {
-        flash.style.transition = "opacity 0.22s ease";
-        flash.style.opacity = "1";
-      }
+      // Shrink the page back into the window (toward center) + darken, then warp
+      // home — where the castle reveals zoomed-in on this page's tower.
+      const MIN = 0.12;
+      let raf = 0;
+      let start: number | null = null;
+      const DUR = 420;
+      const step = (ts: number) => {
+        if (start === null) start = ts;
+        const t = Math.min((ts - start) / DUR, 1);
+        const e = t * t; // easeIn — accelerate into the window
+        setPortal(1 - (1 - MIN) * e, e);
+        if (t < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
       try {
         sessionStorage.setItem("wiz:warp", "1");
         sessionStorage.setItem("wiz:from", pathname);
       } catch {
         /* ignore */
       }
-      setTimeout(() => router.push("/"), 200);
+      setTimeout(() => {
+        if (raf) cancelAnimationFrame(raf);
+        setPortal(MIN, 1);
+        router.push("/");
+      }, DUR);
     };
 
     const onWheel = (e: WheelEvent) => {

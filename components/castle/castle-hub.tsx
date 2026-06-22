@@ -9,6 +9,7 @@ import { navItems, siteConfig } from "@/lib/site";
 import type { NavItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useCastle3D } from "@/lib/use-preference";
+import { setPortal } from "@/components/portal-transition";
 import { CastleSilhouette, CastleTowerNav } from "./castle-fallback";
 
 // Heavy three.js bundle — code-split and loaded client-side only, on demand.
@@ -70,8 +71,9 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
     window.scrollTo(0, 0);
   }, []);
 
-  // Scroll → zoom the camera into the Great Hall (scrubbed by scroll). Near the
-  // end, the bright flash covers the screen and we transition to /great-hall.
+  // Scroll → slowly fly the camera into the Great Hall's window (scrubbed by
+  // scroll). Near the end the dark "window interior" fades in, then we navigate
+  // and the Great Hall grows out of the window.
   React.useEffect(() => {
     if (!show3D) return;
     const section = sectionRef.current;
@@ -83,15 +85,13 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       const total = rect.height - window.innerHeight;
       const d = total > 0 ? clamp01(-rect.top / total) : 0;
       descendRef.current = d;
-      const flash = document.getElementById("wiz-castle-flash");
-      if (flash && !navigatedRef.current) {
-        flash.style.transition = "none";
-        flash.style.opacity = String(smoothstep(0.78, 0.98, d));
+      if (!navigatedRef.current) {
+        setPortal(1, smoothstep(0.86, 1, d));
       }
       invalidateRef.current();
-      if (d >= 0.97 && !navigatedRef.current) {
+      if (d >= 0.98 && !navigatedRef.current) {
         navigatedRef.current = true;
-        if (flash) flash.style.opacity = "1";
+        setPortal(1, 1);
         try {
           sessionStorage.setItem("wiz:warp", "1");
         } catch {
@@ -122,7 +122,7 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       data-castle-mount="3d"
       className={cn(
         "relative w-full",
-        tall ? "h-[200vh]" : "h-[calc(100svh-4rem)]",
+        tall ? "h-[320vh]" : "h-[calc(100svh-4rem)]",
         className,
       )}
     >

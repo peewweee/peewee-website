@@ -15,6 +15,7 @@ import { EffectComposer, Bloom } from "@react-three/postprocessing";
 
 import type { NavItem } from "@/lib/types";
 import { readCastleTheme, type CastleTheme } from "@/lib/tokens";
+import { setPortal } from "@/components/portal-transition";
 
 type Vec3 = [number, number, number];
 
@@ -50,30 +51,33 @@ const TOWERS: { position: Vec3; height: number; radius: number }[] = [
   { position: [2.4, RIGHT_TOP, 0.7], height: 2.7, radius: 0.62 }, // Resume — Castellated Bridge Tower
 ];
 
-// Route → the structure it maps to — used by the "back to castle" intro, which
-// starts the camera zoomed in on that structure and pulls out to the wide view.
-const STRUCTURE_BY_ROUTE: Record<string, Vec3> = {
-  "/great-hall": [-6.6, LEFT_TOP, 0.3],
-  "/projects": [-4.0, LEFT_TOP, -0.3],
-  "/about": [5.6, RIGHT_TOP, 0.4],
-  "/resume": [2.4, RIGHT_TOP, 0.7],
-  "/contact": [1.2, WATER_Y + 0.6, 3.4],
+// Route → its structure: plateau-base center `c`, front radius `r`, and window
+// height `winY` above the base. Used to fly the camera INTO the lit window
+// (forward) and to start the "back to castle" intro zoomed on that window.
+const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; r: number; winY: number }> = {
+  "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], r: 1.7, winY: 1.3 },
+  "/projects": { c: [-4.0, LEFT_TOP, -0.3], r: 1.15, winY: 2.6 },
+  "/about": { c: [5.6, RIGHT_TOP, 0.4], r: 0.8, winY: 1.7 },
+  "/resume": { c: [2.4, RIGHT_TOP, 0.7], r: 0.62, winY: 1.4 },
+  "/contact": { c: [1.2, WATER_Y + 0.6, 3.4], r: 0.8, winY: 0.7 },
 };
 
-/** The close-up camera pose for a structure (shared by warp-in and intro-out). */
-function zoomPose(p: Vec3) {
-  return {
-    pos: new THREE.Vector3(p[0] * 0.92, p[1] + 2.2, p[2] + 4.2),
-    look: new THREE.Vector3(p[0], p[1] + 1.6, p[2]),
-  };
+/** Camera pose that flies INTO a structure's lit window (front face, close up). */
+function enterPose(href: string, center: THREE.Vector3) {
+  const s = STRUCTURE_BY_ROUTE[href];
+  const r = s ? s.r : 1.0;
+  const winY = s ? s.winY : 2.0;
+  const win = new THREE.Vector3(center.x, center.y + winY, center.z + r);
+  return { look: win, pos: new THREE.Vector3(win.x, win.y, win.z + 1.5) };
 }
 
 // Camera: low, three-quarter front-LEFT (left close & prominent, right recedes).
 const WIDE_POS = new THREE.Vector3(-11, 2.6, 15.5);
 const WIDE_LOOK = new THREE.Vector3(1, 4, -2);
-// The scroll "dive" zooms in close to the Great Hall building (left).
-const DIVE_POS = new THREE.Vector3(-6.6, 2.5, 5.2);
-const DIVE_LOOK = new THREE.Vector3(-6.6, 1.7, 0.3);
+// The scroll "dive" flies into the Great Hall's window (left).
+const GREAT_HALL_ENTER = enterPose("/great-hall", new THREE.Vector3(-6.6, LEFT_TOP, 0.3));
+const DIVE_POS = GREAT_HALL_ENTER.pos;
+const DIVE_LOOK = GREAT_HALL_ENTER.look;
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
@@ -676,11 +680,12 @@ type FlyTarget = {
   fromLook: THREE.Vector3;
   toPos: THREE.Vector3;
   toLook: THREE.Vector3;
-  href: string;
-  duration: number;
-  start: number | null;
-  done: boolean;
-  /** Intro = zoom OUT from a tower to the wide view; no navigation, no flash. */
+  durationMs: number;
+  startWall: number;
+  captured: boolean;
+  /** Hold the camera at `fromPos` for this long before moving (the "pause"). */
+  holdMs?: number;
+  /** Intro = zoom OUT from a tower to the wide view (no navigation). */
   intro?: boolean;
 } | null;
 
@@ -701,10 +706,43 @@ function SceneContents({
   const navigatedRef = React.useRef(false);
   const inv = useThree((s) => s.invalidate);
   const scene = useThree((s) => s.scene);
+  const driveRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     onReady?.(inv);
   }, [inv, onReady]);
+
+  // Advance an effect over `durationMs` on wall-clock, calling invalidate() each
+  // tick so frames keep flowing even while the canvas is being SVG-filtered
+  // (which can otherwise stall the R3F demand loop). Independent of useFrame, so
+  // the navigation at the end always fires.
+  const drive = React.useCallback(
+    (durationMs: number, onTick?: (p: number) => void, onEnd?: () => void) => {
+      if (driveRef.current != null) cancelAnimationFrame(driveRef.current);
+      let start: number | null = null;
+      const step = (ts: number) => {
+        if (start === null) start = ts;
+        const p = Math.min((ts - start) / durationMs, 1);
+        onTick?.(p);
+        invalidate();
+        if (p < 1) {
+          driveRef.current = requestAnimationFrame(step);
+        } else {
+          driveRef.current = null;
+          onEnd?.();
+        }
+      };
+      driveRef.current = requestAnimationFrame(step);
+    },
+    [],
+  );
+
+  React.useEffect(
+    () => () => {
+      if (driveRef.current != null) cancelAnimationFrame(driveRef.current);
+    },
+    [],
+  );
 
   // Realism: let every mesh cast + receive shadows (one pass, after mount).
   React.useEffect(() => {
@@ -718,8 +756,8 @@ function SceneContents({
     inv();
   }, [scene, inv]);
 
-  // Warp end: the bright flash is full → route towers navigate (the destination
-  // fades the flash out); the Great Hall jumps to its section and fades out.
+  // Window reached + screen dark → navigate. PortalTransition grows the
+  // destination out of the window on the other side.
   const handleArrive = React.useCallback(
     (href: string) => {
       try {
@@ -732,23 +770,32 @@ function SceneContents({
     [onNavigate],
   );
 
-  // Every tower (incl. the Great Hall) does the same thing: zoom in close.
-  const handleSelect = React.useCallback((item: NavItem, pos: THREE.Vector3) => {
-    if (navigatedRef.current) return;
-    navigatedRef.current = true;
-    const z = zoomPose([pos.x, pos.y, pos.z]);
-    flyRef.current = {
-      fromPos: new THREE.Vector3(),
-      fromLook: new THREE.Vector3(),
-      toPos: z.pos,
-      toLook: z.look,
-      href: item.href,
-      duration: 0.8,
-      start: null,
-      done: false,
-    };
-    invalidate();
-  }, []);
+  // Every tower (incl. the Great Hall) does the same thing: slowly fly INTO the
+  // window; a dark "window interior" fades in over the final stretch, then we
+  // navigate and the destination grows out of the window (see PortalTransition).
+  const handleSelect = React.useCallback(
+    (item: NavItem, pos: THREE.Vector3) => {
+      if (navigatedRef.current) return;
+      navigatedRef.current = true;
+      const enter = enterPose(item.href, pos);
+      const DURATION = 1900;
+      flyRef.current = {
+        fromPos: new THREE.Vector3(),
+        fromLook: new THREE.Vector3(),
+        toPos: enter.pos,
+        toLook: enter.look,
+        durationMs: DURATION,
+        startWall: performance.now(),
+        captured: false,
+      };
+      drive(
+        DURATION,
+        (p) => setPortal(1, smoothstep(0.8, 1, p)),
+        () => handleArrive(item.href),
+      );
+    },
+    [drive, handleArrive],
+  );
 
   // "Back to castle" intro: if we arrived from a content page (wiz:from), start
   // the camera zoomed in on that page's structure, then pull out to the wide view.
@@ -760,22 +807,27 @@ function SceneContents({
     } catch {
       /* ignore */
     }
-    const p = from ? STRUCTURE_BY_ROUTE[from] : undefined;
-    if (!p) return;
-    const z = zoomPose(p);
+    const s = from ? STRUCTURE_BY_ROUTE[from] : undefined;
+    if (!s) return;
+    const enter = enterPose(from!, new THREE.Vector3(s.c[0], s.c[1], s.c[2]));
+    const HOLD = 750; // pause on the zoomed-in tower before pulling out
+    const ZOOMOUT = 1700;
     flyRef.current = {
-      fromPos: z.pos,
-      fromLook: z.look,
+      fromPos: enter.pos,
+      fromLook: enter.look,
       toPos: WIDE_POS.clone(),
       toLook: WIDE_LOOK.clone(),
-      href: "",
-      duration: 1.3,
-      start: null,
-      done: false,
+      durationMs: ZOOMOUT,
+      holdMs: HOLD,
+      startWall: performance.now(),
+      captured: true, // intro uses its preset (zoomed-in) pose
       intro: true,
     };
-    invalidate();
-  }, []);
+    // Keep frames flowing through the hold + pull-out, then release to idle.
+    drive(HOLD + ZOOMOUT, undefined, () => {
+      flyRef.current = null;
+    });
+  }, [drive]);
 
   // Demand mode: render a few frames after mount so the scene paints once the
   // canvas has sized, even with no pointer/scroll interaction yet.
@@ -832,7 +884,7 @@ function SceneContents({
       <RightCliff />
       <Viaduct position={[0, 0, 0.4]} />
 
-      <CameraRig flyRef={flyRef} descendRef={descendRef} onArrive={handleArrive} />
+      <CameraRig flyRef={flyRef} descendRef={descendRef} />
       <CastleBackdrop />
 
       {/* Great Hall = an interactive BUILDING (home), far left */}
@@ -1069,23 +1121,15 @@ function GreatHallBuilding({
 function CameraRig({
   flyRef,
   descendRef,
-  onArrive,
 }: {
   flyRef: React.MutableRefObject<FlyTarget>;
   descendRef: React.MutableRefObject<number>;
-  onArrive: (href: string) => void;
 }) {
   const gl = useThree((s) => s.gl);
   const pointer = React.useRef({ x: 0, y: 0 });
   const look = React.useRef(WIDE_LOOK.clone());
   const desiredPos = React.useRef(new THREE.Vector3());
   const desiredLook = React.useRef(new THREE.Vector3());
-  const flashEl = React.useRef<HTMLElement | null>(null);
-
-  React.useEffect(() => {
-    flashEl.current = document.getElementById("wiz-castle-flash");
-  }, []);
-
   React.useEffect(() => {
     const el = gl.domElement;
     const onMove = (e: PointerEvent) => {
@@ -1104,31 +1148,21 @@ function CameraRig({
     const fly = flyRef.current;
 
     if (fly) {
-      if (fly.start === null) {
-        fly.start = state.clock.elapsedTime;
-        // Forward warp starts from the current camera; the intro uses its preset
-        // (zoomed-in) pose.
-        if (!fly.intro) {
-          fly.fromPos.copy(cam.position);
-          fly.fromLook.copy(look.current);
-        }
+      // Forward warp starts from the current camera; the intro uses its preset
+      // (zoomed-in) pose. Progress is wall-clock so dropped frames (while the
+      // canvas is filtered) never desync it. The ripple + navigation are driven
+      // separately by drive(), so nothing here needs to detect the end.
+      if (!fly.captured) {
+        fly.fromPos.copy(cam.position);
+        fly.fromLook.copy(look.current);
+        fly.captured = true;
       }
-      const t = clamp01((state.clock.elapsedTime - fly.start) / fly.duration);
+      const elapsed = performance.now() - fly.startWall - (fly.holdMs ?? 0);
+      const t = clamp01(elapsed / fly.durationMs);
       const e = easeInOut(t);
       cam.position.lerpVectors(fly.fromPos, fly.toPos, e);
       look.current.lerpVectors(fly.fromLook, fly.toLook, e);
       moving = true;
-      // Forward warp: bright flash fades in over the last part of the zoom.
-      // (The intro's white is faded out by RouteFlash instead.)
-      if (flashEl.current && !fly.intro) {
-        flashEl.current.style.transition = "none";
-        flashEl.current.style.opacity = String(smoothstep(0.5, 0.95, t));
-      }
-      if (t >= 1 && !fly.done) {
-        fly.done = true;
-        if (fly.intro) flyRef.current = null;
-        else onArrive(fly.href);
-      }
     } else {
       const d = clamp01(descendRef.current);
       const e = easeInOut(d);

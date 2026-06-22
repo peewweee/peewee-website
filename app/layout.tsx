@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { ConditionalFooter } from "@/components/conditional-footer";
 import { SortingHat } from "@/components/sorting-hat/sorting-hat";
 import { Atmosphere } from "@/components/atmosphere/atmosphere";
-import { RouteFlash } from "@/components/route-flash";
+import { PortalTransition } from "@/components/portal-transition";
 import { BackToCastle } from "@/components/back-to-castle";
 
 export const metadata: Metadata = {
@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
-        <div className="flex min-h-dvh flex-col">
+        <div id="wiz-portal-target" className="flex min-h-dvh flex-col">
           <SiteHeader />
           <main id="main-content" className="flex-1">
             {children}
@@ -52,7 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Global, on every page (Phase 3/4 stubs) */}
         <SortingHat />
         <Atmosphere />
-        <RouteFlash />
+        <PortalTransition />
         <BackToCastle />
       </body>
     </html>
