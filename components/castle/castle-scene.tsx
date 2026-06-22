@@ -24,13 +24,12 @@ type Vec3 = [number, number, number];
 const WHITE = "#8d7150"; // old-brown Hogwarts stone (name kept for reach)
 const WHITE_DK = "#6f5839"; // shadowed brown stone
 const PURPLE = "#4a3f8e";
-const PURPLE_DK = "#352b66";
 const SLATE = "#34373d"; // dark-gray roof slate
 const SLATE_DK = "#26282d"; // darker roof slate
 const ROCK = "#474d60";
 const ROCK_DK = "#313749";
 const ROCK_LT = "#565d72";
-const BRIDGE = "#b3b9cb";
+const BRIDGE = "#3a3d44"; // dark-gray viaduct stone
 const WARM = "#ffcf6b";
 const WATER = "#0b1734";
 
@@ -582,7 +581,7 @@ function Viaduct({ position = [0, 0, 0] as Vec3 }: { position?: Vec3 }) {
       </mesh>
       <mesh position={[0, BRIDGE_BOTTOM + 2.1 + 0.9 + 0.09, 0]}>
         <boxGeometry args={[LOWER_TIER.totalW + 0.5, 0.18, BRIDGE_DEPTH + 0.6]} />
-        <meshStandardMaterial color={WHITE_DK} roughness={0.85} map={brickTexture()} />
+        <meshStandardMaterial color={BRIDGE} roughness={0.85} map={roofTexture()} />
       </mesh>
 
       {/* Two wide rectangular wings filling the deck, joining both clusters */}
@@ -638,6 +637,7 @@ export function CastleScene({
   return (
     <Canvas
       frameloop="demand"
+      shadows
       dpr={[1, 2]}
       camera={{ position: [-11, 2.6, 15.5], fov: 50 }}
       gl={{ antialias: true, alpha: false }}
@@ -684,10 +684,23 @@ function SceneContents({
   const flyRef = React.useRef<FlyTarget>(null);
   const navigatedRef = React.useRef(false);
   const inv = useThree((s) => s.invalidate);
+  const scene = useThree((s) => s.scene);
 
   React.useEffect(() => {
     onReady?.(inv);
   }, [inv, onReady]);
+
+  // Realism: let every mesh cast + receive shadows (one pass, after mount).
+  React.useEffect(() => {
+    scene.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) {
+        m.castShadow = true;
+        m.receiveShadow = true;
+      }
+    });
+    inv();
+  }, [scene, inv]);
 
   const handleSelect = React.useCallback(
     (item: NavItem, pos: THREE.Vector3) => {
@@ -730,9 +743,22 @@ function SceneContents({
       {/* Low-lying exponential fog for the misty cliff base */}
       <fogExp2 attach="fog" args={[theme.bgSunken, 0.015]} />
 
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[8, 12, -2]} intensity={1.2} color="#dbe2ff" />
-      <directionalLight position={[-10, 6, 8]} intensity={0.3} color="#8a93c0" />
+      <ambientLight intensity={0.3} />
+      <directionalLight
+        position={[8, 12, -2]}
+        intensity={1.6}
+        color="#dbe2ff"
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+        shadow-camera-near={0.5}
+        shadow-camera-far={45}
+        shadow-camera-left={-18}
+        shadow-camera-right={18}
+        shadow-camera-top={18}
+        shadow-camera-bottom={-18}
+        shadow-bias={-0.0005}
+      />
+      <directionalLight position={[-10, 6, 8]} intensity={0.35} color="#8a93c0" />
       <pointLight
         position={[-2, 5, 5]}
         intensity={16}
@@ -819,14 +845,14 @@ function CastleBackdrop() {
         radius={0.34}
         height={4.0}
         body={PURPLE}
-        roof={PURPLE_DK}
+        roof={SLATE_DK}
       />
       <Spire
         position={[4.6, RIGHT_TOP, -2.6]}
         radius={0.32}
         height={3.2}
         body={PURPLE}
-        roof={PURPLE_DK}
+        roof={SLATE_DK}
       />
       {/* Structure 8: small hidden grey spire between them */}
       <Spire
@@ -1147,14 +1173,6 @@ function Tower({
           metalness={0.2}
         />
       </mesh>
-      {[-0.16, 0, 0.16].map((x, i) => (
-        <Glow
-          key={i}
-          position={[x, height + coneH * 0.75, radius * 0.5]}
-          size={[0.05, 0.22, 0.05]}
-          intensity={1.2}
-        />
-      ))}
 
       {winYs.map((y, i) => (
         <mesh key={i} position={[0, y, radius * 0.92]}>
