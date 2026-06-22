@@ -51,24 +51,35 @@ const TOWERS: { position: Vec3; height: number; radius: number }[] = [
   { position: [2.4, RIGHT_TOP, 0.7], height: 2.7, radius: 0.62 }, // Resume — Castellated Bridge Tower
 ];
 
-// Route → its structure: plateau-base center `c`, front radius `r`, and window
-// height `winY` above the base. Used to fly the camera INTO the lit window
-// (forward) and to start the "back to castle" intro zoomed on that window.
-const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; r: number; winY: number }> = {
-  "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], r: 1.7, winY: 1.3 },
-  "/projects": { c: [-4.0, LEFT_TOP, -0.3], r: 1.15, winY: 2.6 },
-  "/about": { c: [5.6, RIGHT_TOP, 0.4], r: 0.8, winY: 1.7 },
-  "/resume": { c: [2.4, RIGHT_TOP, 0.7], r: 0.62, winY: 1.4 },
-  "/contact": { c: [1.2, WATER_Y + 0.6, 3.4], r: 0.8, winY: 0.7 },
+// Route → its structure. `win` = offset (from the plateau-base center `c`) of an
+// actual LIT window; `cam` = where the camera ends relative to that window. The
+// towers' windows sit on the front (+z) face; the Great Hall's are on its left
+// (-x) side, so it aims sideways. Used to fly INTO the window (forward) and to
+// start the "back to castle" intro zoomed on it.
+const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; win: Vec3; cam: Vec3 }> = {
+  // Great Hall — a left-side window (x = -width/2), aimed at from the left-front.
+  "/great-hall": {
+    c: [-6.6, LEFT_TOP, 0.3],
+    win: [-1.33, 1.25, 1.2],
+    cam: [-1.3, 0.15, 0.6],
+  },
+  // Towers — a mid window on the front face (y = height*0.5, z = radius*0.92).
+  "/projects": { c: [-4.0, LEFT_TOP, -0.3], win: [0, 2.6, 1.06], cam: [0, 0, 0.62] },
+  "/about": { c: [5.6, RIGHT_TOP, 0.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.56] },
+  "/resume": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 1.35, 0.57], cam: [0, 0, 0.5] },
+  "/contact": { c: [1.2, WATER_Y + 0.6, 3.4], win: [0, 0.5, 0.8], cam: [0, 0, 0.9] },
 };
 
-/** Camera pose that flies INTO a structure's lit window (front face, close up). */
+/** Camera pose that flies INTO a structure's lit window (close up). */
 function enterPose(href: string, center: THREE.Vector3) {
   const s = STRUCTURE_BY_ROUTE[href];
-  const r = s ? s.r : 1.0;
-  const winY = s ? s.winY : 2.0;
-  const win = new THREE.Vector3(center.x, center.y + winY, center.z + r);
-  return { look: win, pos: new THREE.Vector3(win.x, win.y, win.z + 1.5) };
+  const w = s ? s.win : [0, 2, 1];
+  const cam = s ? s.cam : [0, 0, 1.2];
+  const win = new THREE.Vector3(center.x + w[0], center.y + w[1], center.z + w[2]);
+  return {
+    look: win,
+    pos: new THREE.Vector3(win.x + cam[0], win.y + cam[1], win.z + cam[2]),
+  };
 }
 
 // Camera: low, three-quarter front-LEFT (left close & prominent, right recedes).
@@ -790,7 +801,7 @@ function SceneContents({
       };
       drive(
         DURATION,
-        (p) => setPortal(1, smoothstep(0.8, 1, p)),
+        (p) => setPortal(smoothstep(0.72, 1, p)),
         () => handleArrive(item.href),
       );
     },

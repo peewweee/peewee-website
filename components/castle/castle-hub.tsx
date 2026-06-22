@@ -86,12 +86,12 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       const d = total > 0 ? clamp01(-rect.top / total) : 0;
       descendRef.current = d;
       if (!navigatedRef.current) {
-        setPortal(1, smoothstep(0.86, 1, d));
+        setPortal(smoothstep(0.88, 1, d));
       }
       invalidateRef.current();
       if (d >= 0.98 && !navigatedRef.current) {
         navigatedRef.current = true;
-        setPortal(1, 1);
+        setPortal(1);
         try {
           sessionStorage.setItem("wiz:warp", "1");
         } catch {

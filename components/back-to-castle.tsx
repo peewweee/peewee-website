@@ -26,17 +26,15 @@ export function BackToCastle() {
     const trigger = () => {
       if (fired) return;
       fired = true;
-      // Shrink the page back into the window (toward center) + darken, then warp
-      // home — where the castle reveals zoomed-in on this page's tower.
-      const MIN = 0.12;
+      // Bloom the page to bright yellow, then warp home — where the castle
+      // reveals zoomed-in on this page's tower (and holds before pulling out).
       let raf = 0;
       let start: number | null = null;
-      const DUR = 420;
+      const DUR = 300;
       const step = (ts: number) => {
         if (start === null) start = ts;
         const t = Math.min((ts - start) / DUR, 1);
-        const e = t * t; // easeIn — accelerate into the window
-        setPortal(1 - (1 - MIN) * e, e);
+        setPortal(t * t); // easeIn
         if (t < 1) raf = requestAnimationFrame(step);
       };
       raf = requestAnimationFrame(step);
@@ -48,7 +46,7 @@ export function BackToCastle() {
       }
       setTimeout(() => {
         if (raf) cancelAnimationFrame(raf);
-        setPortal(MIN, 1);
+        setPortal(1);
         router.push("/");
       }, DUR);
     };

@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to content
         </a>
-        <div id="wiz-portal-target" className="flex min-h-dvh flex-col">
+        <div className="flex min-h-dvh flex-col">
           <SiteHeader />
           <main id="main-content" className="flex-1">
             {children}
