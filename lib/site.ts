@@ -29,7 +29,7 @@ export const siteConfig = {
 export const navItems: NavItem[] = [
   {
     label: "Great Hall",
-    href: "/",
+    href: "/great-hall",
     tower: "The Great Hall",
     description: "Welcome — meet the wizard and the Sorting Hat.",
     glyph: "🏰",

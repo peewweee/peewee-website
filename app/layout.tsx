@@ -4,9 +4,10 @@ import "./globals.css";
 import { fontVariables } from "./fonts";
 import { siteConfig, getSiteUrl } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
+import { ConditionalFooter } from "@/components/conditional-footer";
 import { SortingHat } from "@/components/sorting-hat/sorting-hat";
 import { Atmosphere } from "@/components/atmosphere/atmosphere";
+import { RouteFlash } from "@/components/route-flash";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
@@ -44,12 +45,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <main id="main-content" className="flex-1">
             {children}
           </main>
-          <SiteFooter />
+          <ConditionalFooter />
         </div>
 
         {/* Global, on every page (Phase 3/4 stubs) */}
         <SortingHat />
         <Atmosphere />
+        <RouteFlash />
       </body>
     </html>
   );

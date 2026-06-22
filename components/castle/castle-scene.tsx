@@ -53,11 +53,16 @@ const TOWERS: { position: Vec3; height: number; radius: number }[] = [
 // Camera: low, three-quarter front-LEFT (left close & prominent, right recedes).
 const WIDE_POS = new THREE.Vector3(-11, 2.6, 15.5);
 const WIDE_LOOK = new THREE.Vector3(1, 4, -2);
-const DIVE_POS = new THREE.Vector3(-6.5, 2.8, 6);
-const DIVE_LOOK = new THREE.Vector3(-6, 2.6, 0.4);
+// The scroll "dive" zooms in close to the Great Hall building (left).
+const DIVE_POS = new THREE.Vector3(-6.6, 2.5, 5.2);
+const DIVE_LOOK = new THREE.Vector3(-6.6, 1.7, 0.3);
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = clamp01((x - a) / (b - a));
+  return t * t * (3 - 2 * t);
+};
 
 /* ----------------------------------------------------------------------------
    Viaduct arch-wall shape (real openings via ExtrudeGeometry holes).
@@ -617,22 +622,16 @@ function Water() {
 export function CastleScene({
   items,
   descendRef,
-  onEnterGreatHall,
   onReady,
 }: {
   items: NavItem[];
   descendRef?: React.MutableRefObject<number>;
-  onEnterGreatHall?: () => void;
   onReady?: (invalidate: () => void) => void;
 }) {
   const router = useRouter();
   const [theme] = React.useState<CastleTheme>(() => readCastleTheme());
   const fallbackDescend = React.useRef(0);
   const dRef = descendRef ?? fallbackDescend;
-  const enter = React.useCallback(() => {
-    if (onEnterGreatHall) onEnterGreatHall();
-    else router.push("/");
-  }, [onEnterGreatHall, router]);
 
   return (
     <Canvas
@@ -647,7 +646,6 @@ export function CastleScene({
         items={items}
         theme={theme}
         descendRef={dRef}
-        onEnterGreatHall={enter}
         onReady={onReady}
         onNavigate={(href) => router.push(href)}
       />
@@ -670,14 +668,12 @@ function SceneContents({
   items,
   theme,
   descendRef,
-  onEnterGreatHall,
   onNavigate,
   onReady,
 }: {
   items: NavItem[];
   theme: CastleTheme;
   descendRef: React.MutableRefObject<number>;
-  onEnterGreatHall: () => void;
   onNavigate: (href: string) => void;
   onReady?: (invalidate: () => void) => void;
 }) {
@@ -702,28 +698,36 @@ function SceneContents({
     inv();
   }, [scene, inv]);
 
-  const handleSelect = React.useCallback(
-    (item: NavItem, pos: THREE.Vector3) => {
-      if (navigatedRef.current) return;
-      if (item.href === "/") {
-        onEnterGreatHall();
-        return;
+  // Warp end: the bright flash is full → route towers navigate (the destination
+  // fades the flash out); the Great Hall jumps to its section and fades out.
+  const handleArrive = React.useCallback(
+    (href: string) => {
+      try {
+        sessionStorage.setItem("wiz:warp", "1");
+      } catch {
+        /* ignore */
       }
-      navigatedRef.current = true;
-      flyRef.current = {
-        fromPos: new THREE.Vector3(),
-        fromLook: new THREE.Vector3(),
-        toPos: new THREE.Vector3(pos.x * 0.6, pos.y + 2.4, pos.z + 5.5),
-        toLook: new THREE.Vector3(pos.x, pos.y + 1.3, pos.z),
-        href: item.href,
-        duration: 1.1,
-        start: null,
-        done: false,
-      };
-      invalidate();
+      onNavigate(href);
     },
-    [onEnterGreatHall],
+    [onNavigate],
   );
+
+  // Every tower (incl. the Great Hall) does the same thing: zoom in close.
+  const handleSelect = React.useCallback((item: NavItem, pos: THREE.Vector3) => {
+    if (navigatedRef.current) return;
+    navigatedRef.current = true;
+    flyRef.current = {
+      fromPos: new THREE.Vector3(),
+      fromLook: new THREE.Vector3(),
+      toPos: new THREE.Vector3(pos.x * 0.92, pos.y + 2.2, pos.z + 4.2),
+      toLook: new THREE.Vector3(pos.x, pos.y + 1.6, pos.z),
+      href: item.href,
+      duration: 0.9,
+      start: null,
+      done: false,
+    };
+    invalidate();
+  }, []);
 
   // Demand mode: render a few frames after mount so the scene paints once the
   // canvas has sized, even with no pointer/scroll interaction yet.
@@ -780,7 +784,7 @@ function SceneContents({
       <RightCliff />
       <Viaduct position={[0, 0, 0.4]} />
 
-      <CameraRig flyRef={flyRef} descendRef={descendRef} onArrive={onNavigate} />
+      <CameraRig flyRef={flyRef} descendRef={descendRef} onArrive={handleArrive} />
       <CastleBackdrop />
 
       {/* Great Hall = an interactive BUILDING (home), far left */}
@@ -1028,6 +1032,11 @@ function CameraRig({
   const look = React.useRef(WIDE_LOOK.clone());
   const desiredPos = React.useRef(new THREE.Vector3());
   const desiredLook = React.useRef(new THREE.Vector3());
+  const flashEl = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    flashEl.current = document.getElementById("wiz-castle-flash");
+  }, []);
 
   React.useEffect(() => {
     const el = gl.domElement;
@@ -1057,6 +1066,11 @@ function CameraRig({
       cam.position.lerpVectors(fly.fromPos, fly.toPos, e);
       look.current.lerpVectors(fly.fromLook, fly.toLook, e);
       moving = true;
+      // Bright flash fades in over the last ~45% of the zoom.
+      if (flashEl.current) {
+        flashEl.current.style.transition = "none";
+        flashEl.current.style.opacity = String(smoothstep(0.55, 1, t));
+      }
       if (t >= 1 && !fly.done) {
         fly.done = true;
         onArrive(fly.href);

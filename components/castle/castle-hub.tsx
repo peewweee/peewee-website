@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { Box, Boxes, ChevronDown, Sparkles } from "lucide-react";
 
 import { navItems, siteConfig } from "@/lib/site";
@@ -18,14 +19,18 @@ const CastleScene = dynamic(() => import("./castle-scene").then((m) => m.CastleS
 });
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = clamp01((x - a) / (b - a));
+  return t * t * (3 - 2 * t);
+};
 
 export interface CastleHubProps {
   /** Tower destinations. Defaults to the site's primary nav. */
   items?: NavItem[];
   className?: string;
   /**
-   * "hero" → the full-screen, pinned, scroll-driven castle landing (the home
-   * page). "card" → the bounded card with a heading + accessible tower nav.
+   * "hero" → the full-screen 3D castle landing (the home page). "card" → the
+   * bounded card with a heading + accessible tower nav.
    */
   variant?: "hero" | "card";
 }
@@ -49,27 +54,27 @@ export function CastleHub({
 }
 
 /* ============================================================================
-   Hero variant — full-screen, pinned; scrolling drives the camera "dive" into
-   the keep (the Great Hall), then hands off to the hero section below.
+   Hero variant — the full-screen 3D castle (home page). It IS the navigation:
+   each tower zooms in + warps to its route. Header nav is the a11y fallback.
    ============================================================================ */
 function CastleHero({ items, className }: { items: NavItem[]; className?: string }) {
   const { show3D, enabled, setEnabled, eligible } = useCastle3D();
+  const router = useRouter();
   const sectionRef = React.useRef<HTMLElement>(null);
-  const stageRef = React.useRef<HTMLDivElement>(null);
   const descendRef = React.useRef(0);
   const invalidateRef = React.useRef<() => void>(() => {});
+  const navigatedRef = React.useRef(false);
 
-  const enterGreatHall = React.useCallback(() => {
-    document.getElementById("great-hall")?.scrollIntoView({ behavior: "smooth" });
+  // Always begin at the top so the dive starts from the wide framing.
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
   }, []);
 
-  // Scroll → descent (3D only). Map progress through the tall pinned section to
-  // descendRef (0→1) and fade the pinned stage out near the end so it cross-fades
-  // into the Great Hall section.
+  // Scroll → zoom the camera into the Great Hall (scrubbed by scroll). Near the
+  // end, the bright flash covers the screen and we transition to /great-hall.
   React.useEffect(() => {
     if (!show3D) return;
     const section = sectionRef.current;
-    const stage = stageRef.current;
     if (!section) return;
     let raf = 0;
     const update = () => {
@@ -78,12 +83,22 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       const total = rect.height - window.innerHeight;
       const d = total > 0 ? clamp01(-rect.top / total) : 0;
       descendRef.current = d;
-      if (stage) {
-        const fade = d <= 0.65 ? 1 : Math.max(1 - (d - 0.65) / 0.35, 0);
-        stage.style.opacity = String(fade);
-        stage.style.pointerEvents = fade < 0.05 ? "none" : "";
+      const flash = document.getElementById("wiz-castle-flash");
+      if (flash && !navigatedRef.current) {
+        flash.style.transition = "none";
+        flash.style.opacity = String(smoothstep(0.78, 0.98, d));
       }
       invalidateRef.current();
+      if (d >= 0.97 && !navigatedRef.current) {
+        navigatedRef.current = true;
+        if (flash) flash.style.opacity = "1";
+        try {
+          sessionStorage.setItem("wiz:warp", "1");
+        } catch {
+          /* ignore */
+        }
+        router.push("/great-hall");
+      }
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
@@ -96,9 +111,9 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [show3D]);
+  }, [show3D, router]);
 
-  const tall = show3D; // only the 3D scene scrubs; 2D is a single static screen
+  const tall = show3D; // 3D pins and scrubs; 2D is a single static screen
 
   return (
     <section
@@ -107,12 +122,11 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       data-castle-mount="3d"
       className={cn(
         "relative w-full",
-        tall ? "h-[220vh]" : "min-h-[calc(100svh-4rem)]",
+        tall ? "h-[200vh]" : "h-[calc(100svh-4rem)]",
         className,
       )}
     >
       <div
-        ref={stageRef}
         className={cn(
           "overflow-hidden",
           tall ? "sticky top-16 h-[calc(100svh-4rem)]" : "relative h-[calc(100svh-4rem)]",
@@ -124,7 +138,6 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
               <CastleScene
                 items={items}
                 descendRef={descendRef}
-                onEnterGreatHall={enterGreatHall}
                 onReady={(fn) => {
                   invalidateRef.current = fn;
                   fn();
@@ -146,12 +159,14 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
           </h1>
         </div>
 
-        {/* Scroll / explore hint */}
+        {/* Hint */}
         <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex flex-col items-center gap-1 text-foreground-muted">
           <span className="text-[11px] uppercase tracking-[0.2em]">
-            {show3D ? "Click a tower · scroll to enter" : "Use the menu to explore"}
+            {show3D ? "Scroll to enter · or click a tower" : "Use the menu to explore"}
           </span>
-          <ChevronDown className="size-5 animate-bounce text-accent-text" aria-hidden />
+          {show3D && (
+            <ChevronDown className="size-5 animate-bounce text-accent-text" aria-hidden />
+          )}
         </div>
 
         {/* 2D/3D toggle */}
