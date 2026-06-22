@@ -30,7 +30,7 @@ const SLATE_DK = "#26282d"; // darker roof slate
 const ROCK = "#474d60";
 const ROCK_DK = "#313749";
 const ROCK_LT = "#565d72";
-const BRIDGE = "#3a3d44"; // dark-gray viaduct stone
+const BRIDGE = WHITE; // brown viaduct stone, matching the towers
 const WARM = "#ffcf6b";
 const WATER = "#0b1734";
 
@@ -57,12 +57,12 @@ const TOWERS: { position: Vec3; height: number; radius: number }[] = [
 // Used to fly INTO the window (forward) and to start the "back to castle" intro.
 const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; win: Vec3; cam: Vec3 }> = {
   // Great Hall — the window on the front tower (DecoTower at z = depth/2 + 0.1).
-  "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], win: [0, 1.4, 3.41], cam: [0, 0, 0.65] },
+  "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], win: [0, 1.4, 3.41], cam: [0, 0, 0.4] },
   // Towers — a mid window on the front face (y = height*0.5, z = radius*0.92).
-  "/projects": { c: [-4.0, LEFT_TOP, -0.3], win: [0, 2.6, 1.06], cam: [0, 0, 0.62] },
-  "/about": { c: [5.6, RIGHT_TOP, 0.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.56] },
-  "/resume": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 1.35, 0.57], cam: [0, 0, 0.5] },
-  "/contact": { c: [1.2, WATER_Y + 0.6, 3.4], win: [0, 0.5, 0.8], cam: [0, 0, 0.9] },
+  "/projects": { c: [-4.0, LEFT_TOP, -0.3], win: [0, 2.6, 1.06], cam: [0, 0, 0.4] },
+  "/about": { c: [5.6, RIGHT_TOP, 0.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.36] },
+  "/resume": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 1.35, 0.57], cam: [0, 0, 0.32] },
+  "/contact": { c: [1.2, WATER_Y + 0.6, 3.4], win: [0, 0.5, 0.8], cam: [0, 0, 0.6] },
 };
 
 /** Camera pose that flies INTO a structure's lit window (close up). */
@@ -810,7 +810,7 @@ function SceneContents({
       };
       drive(
         DURATION,
-        (p) => setPortal(smoothstep(0.72, 1, p)),
+        (p) => setPortal(smoothstep(0.86, 1, p)),
         () => handleArrive(item.href),
       );
     },
@@ -1251,7 +1251,7 @@ function Tower({
   }, [hovered]);
 
   useFrame(() => {
-    const roofTarget = hovered ? 1.5 : 0;
+    const roofTarget = 0; // cones stay dark gray — no hover glow
     const winTarget = hovered ? 2.3 : 1.2;
     let moving = false;
     if (roofRef.current) {

@@ -90,7 +90,7 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
         titleRef.current.style.opacity = String(1 - smoothstep(0, 0.22, d));
       }
       if (!navigatedRef.current) {
-        setPortal(smoothstep(0.88, 1, d));
+        setPortal(smoothstep(0.92, 1, d));
       }
       invalidateRef.current();
       if (d >= 0.98 && !navigatedRef.current) {
