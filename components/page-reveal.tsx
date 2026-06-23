@@ -6,12 +6,12 @@ import { usePathname, useRouter } from "next/navigation";
 /**
  * Cross-page "into the window" reveal.
  *
- * The camera flies INSIDE a tower (its interior is filled with the window's
- * glowing yellow), so the whole screen goes yellow. We then navigate over a
- * solid-yellow backdrop (#wiz-reveal-bg, z-0) and the destination page grows out
- * of the centre — its `<main>` (z-10) masked by a radial gradient with the
- * softest possible edge. Leaving reverses it: the page shrinks into the yellow,
- * then the live castle re-mounts (zoomed inside the window) and pulls out.
+ * The camera flies INSIDE a tower (its interior is filled with the page's blue),
+ * so the whole screen goes that blue. We then navigate over a backdrop matching
+ * the page background (#wiz-reveal-bg, z-0) and the destination page grows out of
+ * the centre — its `<main>` (z-10) masked by a radial gradient with the softest
+ * possible edge. Leaving reverses it: the page shrinks back into the blue, then
+ * the live castle re-mounts (zoomed inside the window) and pulls out.
  */
 const BG_ID = "wiz-reveal-bg";
 const MAIN_ID = "main-content";
@@ -116,6 +116,18 @@ export function useLeaveReveal() {
 /** Runs the arrival half of the reveal + renders the yellow backdrop. */
 export function RevealController() {
   const pathname = usePathname();
+
+  // Match the backdrop to the page background (the same blue the tower interiors
+  // are filled with), so the destination grows out of an unbroken field of blue.
+  React.useEffect(() => {
+    const b = document.getElementById(BG_ID);
+    if (!b) return;
+    const bs = getComputedStyle(document.body);
+    b.style.backgroundColor = bs.backgroundColor;
+    b.style.backgroundImage = bs.backgroundImage;
+    b.style.backgroundAttachment = "fixed";
+  }, []);
+
   useIso(() => {
     let enter = false;
     let back = false;
@@ -152,11 +164,7 @@ export function RevealController() {
       id={BG_ID}
       aria-hidden
       className="pointer-events-none fixed inset-0 z-0"
-      style={{
-        opacity: 0,
-        background:
-          "radial-gradient(circle at 50% 50%, #fff3cc 0%, #ffd873 45%, #f3bd3c 100%)",
-      }}
+      style={{ opacity: 0 }}
     />
   );
 }

@@ -32,6 +32,7 @@ const ROCK_LT = "#565d72";
 const BRIDGE = WHITE; // brown viaduct stone, matching the towers
 const WARM = "#ffcf6b";
 const WATER = "#0b1734";
+const PAGE_BG = "#0b1026"; // matches the page background (--bg) for the tower interiors
 
 /* ----------------------------------------------------------------------------
    Anchoring heights — every structure sits flush on a plateau top.
@@ -291,16 +292,10 @@ function DecoTower({
         <cylinderGeometry args={[radius * 0.9, radius, height, 14]} />
         <meshStandardMaterial color={body} roughness={0.85} map={brickTexture()} />
       </mesh>
-      {/* glowing yellow interior (seen when the camera dives in through a window) */}
+      {/* page-blue interior (seen when the camera dives in through a window) */}
       <mesh position={[0, height / 2, 0]}>
         <cylinderGeometry args={[radius * 0.8, radius * 0.9, height * 0.98, 14]} />
-        <meshStandardMaterial
-          color={WARM}
-          emissive={WARM}
-          emissiveIntensity={1.1}
-          side={THREE.BackSide}
-          toneMapped={false}
-        />
+        <meshBasicMaterial color={PAGE_BG} side={THREE.BackSide} toneMapped={false} />
       </mesh>
       {band && (
         <mesh position={[0, height - 0.25, 0]}>
@@ -1293,17 +1288,12 @@ function Tower({
         />
       </mesh>
 
-      {/* Glowing yellow interior — only seen once the camera dives in through the
-          window, so the whole view fills with the window's colour. */}
+      {/* Page-blue interior — only seen once the camera dives in through the
+          window, so the view fills with the page background colour and the
+          destination grows seamlessly out of it. */}
       <mesh position={[0, height / 2, 0]}>
         <cylinderGeometry args={[radius * 0.78, radius * 0.9, height * 0.98, 16]} />
-        <meshStandardMaterial
-          color={WARM}
-          emissive={WARM}
-          emissiveIntensity={1.1}
-          side={THREE.BackSide}
-          toneMapped={false}
-        />
+        <meshBasicMaterial color={PAGE_BG} side={THREE.BackSide} toneMapped={false} />
       </mesh>
 
       <Crenellations
