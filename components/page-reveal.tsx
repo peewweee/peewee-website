@@ -54,7 +54,19 @@ function setContent(v: number) {
   if (v >= 0.999) {
     m.style.webkitMaskImage = "";
     m.style.maskImage = "";
+    m.style.backgroundColor = "";
+    m.style.backgroundImage = "";
+    m.style.backgroundAttachment = "";
     return;
+  }
+  // The content pages are transparent (they sit on the body background, which is
+  // hidden behind the frozen castle). Copy the page background onto <main> so it
+  // travels inside the circle — otherwise only the text/cards would reveal.
+  if (!m.style.backgroundColor) {
+    const bs = getComputedStyle(document.body);
+    m.style.backgroundColor = bs.backgroundColor;
+    m.style.backgroundImage = bs.backgroundImage;
+    m.style.backgroundAttachment = "fixed";
   }
   const maxR = Math.hypot(window.innerWidth, window.innerHeight) / 2 + 2;
   const f = maxR * FEATHER;
