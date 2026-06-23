@@ -1,18 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
-import { setPortal } from "@/components/portal-transition";
+import { useLeaveReveal } from "@/components/page-reveal";
 
 /**
- * On any content page, scrolling UP while already at the top plays the bright
- * flash and returns to the home castle — which then opens zoomed in on the tower
- * for this page and pulls out to the wide view (see the scene's intro warp).
+ * On any content page, scrolling UP while already at the top returns to the home
+ * castle: the page shrinks into a closing circular hole, revealing the castle
+ * underneath — which then opens zoomed in on this page's tower and pulls out to
+ * the wide view (see the scene's intro warp).
  */
 export function BackToCastle() {
   const pathname = usePathname();
-  const router = useRouter();
+  const leave = useLeaveReveal();
 
   React.useEffect(() => {
     if (pathname === "/") return;
@@ -26,29 +27,14 @@ export function BackToCastle() {
     const trigger = () => {
       if (fired) return;
       fired = true;
-      // Bloom the page to bright yellow, then warp home — where the castle
-      // reveals zoomed-in on this page's tower (and holds before pulling out).
-      let raf = 0;
-      let start: number | null = null;
-      const DUR = 300;
-      const step = (ts: number) => {
-        if (start === null) start = ts;
-        const t = Math.min((ts - start) / DUR, 1);
-        setPortal(t * t); // easeIn
-        if (t < 1) raf = requestAnimationFrame(step);
-      };
-      raf = requestAnimationFrame(step);
+      // Remember which page we left so the castle opens zoomed-in on its tower.
       try {
-        sessionStorage.setItem("wiz:warp", "1");
         sessionStorage.setItem("wiz:from", pathname);
       } catch {
         /* ignore */
       }
-      setTimeout(() => {
-        if (raf) cancelAnimationFrame(raf);
-        setPortal(1);
-        router.push("/");
-      }, DUR);
+      // Shrink this page into a closing circle, revealing the castle underneath.
+      leave("/");
     };
 
     const onWheel = (e: WheelEvent) => {
@@ -83,7 +69,7 @@ export function BackToCastle() {
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);
     };
-  }, [pathname, router]);
+  }, [pathname, leave]);
 
   return null;
 }

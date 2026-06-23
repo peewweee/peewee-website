@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import * as THREE from "three";
 import {
   Canvas,
@@ -15,7 +14,7 @@ import { EffectComposer, Bloom } from "@react-three/postprocessing";
 
 import type { NavItem } from "@/lib/types";
 import { readCastleTheme, type CastleTheme } from "@/lib/tokens";
-import { setPortal } from "@/components/portal-transition";
+import { useEnterReveal } from "@/components/page-reveal";
 
 type Vec3 = [number, number, number];
 
@@ -87,10 +86,6 @@ const DIVE_LOOK = GREAT_HALL_ENTER.look;
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
-const smoothstep = (a: number, b: number, x: number) => {
-  const t = clamp01((x - a) / (b - a));
-  return t * t * (3 - 2 * t);
-};
 
 /* ----------------------------------------------------------------------------
    Viaduct arch-wall shape (real openings via ExtrudeGeometry holes).
@@ -670,7 +665,7 @@ export function CastleScene({
   descendRef?: React.MutableRefObject<number>;
   onReady?: (invalidate: () => void) => void;
 }) {
-  const router = useRouter();
+  const enter = useEnterReveal();
   const [theme] = React.useState<CastleTheme>(() => readCastleTheme());
   const fallbackDescend = React.useRef(0);
   const dRef = descendRef ?? fallbackDescend;
@@ -681,7 +676,7 @@ export function CastleScene({
       shadows
       dpr={[1, 2]}
       camera={{ position: [-11, 2.6, 15.5], fov: 50 }}
-      gl={{ antialias: true, alpha: false }}
+      gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
       className="!absolute inset-0"
     >
       <SceneContents
@@ -689,7 +684,7 @@ export function CastleScene({
         theme={theme}
         descendRef={dRef}
         onReady={onReady}
-        onNavigate={(href) => router.push(href)}
+        onNavigate={(href) => enter(href)}
       />
     </Canvas>
   );
@@ -776,23 +771,17 @@ function SceneContents({
     inv();
   }, [scene, inv]);
 
-  // Window reached + screen dark → navigate. PortalTransition grows the
-  // destination out of the window on the other side.
+  // Window reached → navigate. The destination then opens through a growing
+  // circular reveal over the castle (see page-reveal.tsx).
   const handleArrive = React.useCallback(
     (href: string) => {
-      try {
-        sessionStorage.setItem("wiz:warp", "1");
-      } catch {
-        /* ignore */
-      }
       onNavigate(href);
     },
     [onNavigate],
   );
 
   // Every tower (incl. the Great Hall) does the same thing: slowly fly INTO the
-  // window; a dark "window interior" fades in over the final stretch, then we
-  // navigate and the destination grows out of the window (see PortalTransition).
+  // window, then navigate — the page reveal grows the destination out of it.
   const handleSelect = React.useCallback(
     (item: NavItem, pos: THREE.Vector3) => {
       if (navigatedRef.current) return;
@@ -808,11 +797,7 @@ function SceneContents({
         startWall: performance.now(),
         captured: false,
       };
-      drive(
-        DURATION,
-        (p) => setPortal(smoothstep(0.86, 1, p)),
-        () => handleArrive(item.href),
-      );
+      drive(DURATION, undefined, () => handleArrive(item.href));
     },
     [drive, handleArrive],
   );

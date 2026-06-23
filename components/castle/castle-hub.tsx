@@ -2,14 +2,13 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { Box, Boxes, ChevronDown, Sparkles } from "lucide-react";
 
 import { navItems } from "@/lib/site";
 import type { NavItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useCastle3D } from "@/lib/use-preference";
-import { setPortal } from "@/components/portal-transition";
+import { useEnterReveal } from "@/components/page-reveal";
 import { CastleSilhouette, CastleTowerNav } from "./castle-fallback";
 
 // Heavy three.js bundle — code-split and loaded client-side only, on demand.
@@ -20,10 +19,6 @@ const CastleScene = dynamic(() => import("./castle-scene").then((m) => m.CastleS
 });
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
-const smoothstep = (a: number, b: number, x: number) => {
-  const t = clamp01((x - a) / (b - a));
-  return t * t * (3 - 2 * t);
-};
 
 export interface CastleHubProps {
   /** Tower destinations. Defaults to the site's primary nav. */
@@ -60,7 +55,7 @@ export function CastleHub({
    ============================================================================ */
 function CastleHero({ items, className }: { items: NavItem[]; className?: string }) {
   const { show3D, enabled, setEnabled, eligible } = useCastle3D();
-  const router = useRouter();
+  const enter = useEnterReveal();
   const sectionRef = React.useRef<HTMLElement>(null);
   const descendRef = React.useRef(0);
   const invalidateRef = React.useRef<() => void>(() => {});
@@ -87,21 +82,12 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       const d = total > 0 ? clamp01(-rect.top / total) : 0;
       descendRef.current = d;
       if (titleRef.current) {
-        titleRef.current.style.opacity = String(1 - smoothstep(0, 0.22, d));
-      }
-      if (!navigatedRef.current) {
-        setPortal(smoothstep(0.92, 1, d));
+        titleRef.current.style.opacity = String(1 - clamp01(d / 0.22));
       }
       invalidateRef.current();
       if (d >= 0.98 && !navigatedRef.current) {
         navigatedRef.current = true;
-        setPortal(1);
-        try {
-          sessionStorage.setItem("wiz:warp", "1");
-        } catch {
-          /* ignore */
-        }
-        router.push("/great-hall");
+        enter("/great-hall");
       }
     };
     const onScroll = () => {
@@ -115,7 +101,7 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [show3D, router]);
+  }, [show3D, enter]);
 
   const tall = show3D; // 3D pins and scrubs; 2D is a single static screen
 
