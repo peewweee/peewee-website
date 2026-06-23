@@ -75,7 +75,9 @@ function enterPose(href: string, center: THREE.Vector3) {
   const cam = s ? s.cam : [0, 0, 1.2];
   const win = new THREE.Vector3(center.x + w[0], center.y + w[1], center.z + w[2]);
   return {
-    look: win,
+    // Aim straight THROUGH the window, deeper into the tower (windows face +z, so
+    // -z is inward), so the POV faces the blue interior as it flies in.
+    look: new THREE.Vector3(win.x, win.y, win.z - 0.8),
     pos: new THREE.Vector3(win.x + cam[0], win.y + cam[1], win.z + cam[2]),
   };
 }
