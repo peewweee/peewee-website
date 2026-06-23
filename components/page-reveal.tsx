@@ -4,56 +4,29 @@ import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 /**
- * Cross-page "circular reveal" where the home castle is the OUTER ring and the
- * destination grows/shrinks in a soft-edged hole.
+ * Cross-page "into the window" reveal.
  *
- * The live 3D castle can't be snapshotted by the View Transitions API, so instead
- * we freeze the castle canvas to an image at the moment of transition and show it
- * as a fixed backdrop (`#wiz-castle-freeze`, z-0). The page content (`<main>`,
- * z-10) is then masked with a soft radial gradient: opaque (content) inside the
- * circle, transparent (the frozen castle shows) outside.
- *
- *   Entering a page → the content circle GROWS out of the castle window.
- *   Leaving a page  → the content circle SHRINKS back into it, castle revealed.
- *
- * On the way home the live castle re-mounts under the frozen image and takes over.
+ * The camera flies INSIDE a tower (its interior is filled with the window's
+ * glowing yellow), so the whole screen goes yellow. We then navigate over a
+ * solid-yellow backdrop (#wiz-reveal-bg, z-0) and the destination page grows out
+ * of the centre — its `<main>` (z-10) masked by a radial gradient with the
+ * softest possible edge. Leaving reverses it: the page shrinks into the yellow,
+ * then the live castle re-mounts (zoomed inside the window) and pulls out.
  */
-const FREEZE_ID = "wiz-castle-freeze";
+const BG_ID = "wiz-reveal-bg";
 const MAIN_ID = "main-content";
-const FEATHER = 0.72; // very soft, heavily-gradient edge (fraction of half-diagonal)
-const DIVE = 0.6; // how far the frozen window "dives in" (extra scale) on entry
-const GROW_MS = 1050;
-const SHRINK_MS = 750;
+const FEATHER = 1; // maximum softness — the rim is a full radial gradient
+const GROW_MS = 1000;
+const SHRINK_MS = 700;
 
 const useIso = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
 
-let storedFrame = ""; // last captured castle frame (data URL)
-
-function captureCastle(): boolean {
-  const c = document.querySelector("canvas") as HTMLCanvasElement | null;
-  if (!c) return false;
-  try {
-    storedFrame = c.toDataURL("image/jpeg", 0.82);
-  } catch {
-    return false;
-  }
-  const f = document.getElementById(FREEZE_ID);
-  if (f && storedFrame) f.style.backgroundImage = `url(${storedFrame})`;
-  return !!storedFrame;
+function setBg(show: boolean) {
+  const b = document.getElementById(BG_ID);
+  if (b) b.style.opacity = show ? "1" : "0";
 }
 
-function setFreeze(show: boolean) {
-  const f = document.getElementById(FREEZE_ID);
-  if (f) f.style.opacity = show && storedFrame ? "1" : "0";
-}
-
-/** Scale the frozen window to fake the camera pushing IN through it (or out). */
-function setFreezeScale(s: number) {
-  const f = document.getElementById(FREEZE_ID);
-  if (f) f.style.transform = `scale(${s})`;
-}
-
-/** content openness: 1 = full screen, 0 = closed to a point (castle revealed). */
+/** content openness: 1 = full screen, 0 = closed to a point (yellow revealed). */
 function setContent(v: number) {
   const m = document.getElementById(MAIN_ID);
   if (!m) return;
@@ -66,9 +39,9 @@ function setContent(v: number) {
     m.style.backgroundAttachment = "";
     return;
   }
-  // The content pages are transparent (they sit on the body background, which is
-  // hidden behind the frozen castle). Copy the page background onto <main> so it
-  // travels inside the circle — otherwise only the text/cards would reveal.
+  // Content pages are transparent (they sit on the body background, which is
+  // hidden behind the yellow). Copy that background onto <main> so the whole page
+  // — not just the text — travels inside the circle.
   if (!m.style.backgroundColor) {
     const bs = getComputedStyle(document.body);
     m.style.backgroundColor = bs.backgroundColor;
@@ -92,8 +65,7 @@ function animate(ms: number, onProgress: (e: number) => void, done?: () => void)
   const step = (ts: number) => {
     if (start === null) start = ts;
     const t = Math.min((ts - start) / ms, 1);
-    const e = 1 - Math.pow(1 - t, 3); // easeOutCubic
-    onProgress(e);
+    onProgress(1 - Math.pow(1 - t, 3)); // easeOutCubic
     if (t < 1) raf = requestAnimationFrame(step);
     else done?.();
   };
@@ -103,12 +75,12 @@ function animate(ms: number, onProgress: (e: number) => void, done?: () => void)
   };
 }
 
-/** Returns enter(href): freeze the castle, then grow the destination out of it. */
+/** Returns enter(href): the page grows out of the yellow window. */
 export function useEnterReveal() {
   const router = useRouter();
   return React.useCallback(
     (href: string) => {
-      if (captureCastle()) setFreeze(true);
+      setBg(true);
       try {
         sessionStorage.setItem("wiz:enter", "1");
       } catch {
@@ -120,12 +92,12 @@ export function useEnterReveal() {
   );
 }
 
-/** Returns leave(href): shrink this page into the castle, then go (home). */
+/** Returns leave(href): the page shrinks into the yellow window, then go (home). */
 export function useLeaveReveal() {
   const router = useRouter();
   return React.useCallback(
     (href: string) => {
-      setFreeze(true); // re-show the last frozen castle behind the page
+      setBg(true);
       try {
         sessionStorage.setItem("wiz:back", "1");
       } catch {
@@ -133,10 +105,7 @@ export function useLeaveReveal() {
       }
       animate(
         SHRINK_MS,
-        (e) => {
-          setContent(1 - e); // page shrinks into the window
-          setFreezeScale(1 + DIVE * 0.4 * (1 - e)); // window eases back out
-        },
+        (e) => setContent(1 - e),
         () => router.push(href),
       );
     },
@@ -144,7 +113,7 @@ export function useLeaveReveal() {
   );
 }
 
-/** Runs the arrival half of the reveal + renders the frozen-castle backdrop. */
+/** Runs the arrival half of the reveal + renders the yellow backdrop. */
 export function RevealController() {
   const pathname = usePathname();
   useIso(() => {
@@ -160,36 +129,34 @@ export function RevealController() {
     }
     if (enter) {
       setContent(0); // hide the destination before first paint
-      setFreezeScale(1);
-      const cancel = animate(
+      return animate(
         GROW_MS,
-        (e) => {
-          setContent(e); // the page grows out of the window
-          setFreezeScale(1 + DIVE * e); // ...while we dive IN through it
-        },
+        (e) => setContent(e),
         () => {
           setContent(1);
-          setFreeze(false);
-          setFreezeScale(1);
+          setBg(false);
         },
       );
-      return cancel;
     }
     if (back) {
-      // The shrink already revealed the castle; reset and let the live one take over.
+      // The shrink already revealed the yellow; reset and let the live castle
+      // (which mounts zoomed inside the window) take over.
       setContent(1);
-      setFreezeScale(1);
-      const to = window.setTimeout(() => setFreeze(false), 500);
+      const to = window.setTimeout(() => setBg(false), 500);
       return () => window.clearTimeout(to);
     }
   }, [pathname]);
 
   return (
     <div
-      id={FREEZE_ID}
+      id={BG_ID}
       aria-hidden
       className="pointer-events-none fixed inset-0 z-0"
-      style={{ opacity: 0, backgroundSize: "cover", backgroundPosition: "center" }}
+      style={{
+        opacity: 0,
+        background:
+          "radial-gradient(circle at 50% 50%, #fff3cc 0%, #ffd873 45%, #f3bd3c 100%)",
+      }}
     />
   );
 }

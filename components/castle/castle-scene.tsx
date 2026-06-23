@@ -56,12 +56,14 @@ const TOWERS: { position: Vec3; height: number; radius: number }[] = [
 // Used to fly INTO the window (forward) and to start the "back to castle" intro.
 const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; win: Vec3; cam: Vec3 }> = {
   // Great Hall — the window on the front tower (DecoTower at z = depth/2 + 0.1).
-  "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], win: [0, 1.4, 3.41], cam: [0, 0, 0.12] },
+  // `cam` is NEGATIVE: the camera flies through the window to INSIDE the tower,
+  // where the glowing yellow interior fills the whole view.
+  "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], win: [0, 1.4, 3.41], cam: [0, 0, -0.4] },
   // Towers — a mid window on the front face (y = height*0.5, z = radius*0.92).
-  "/projects": { c: [-4.0, LEFT_TOP, -0.3], win: [0, 2.6, 1.06], cam: [0, 0, 0.12] },
-  "/about": { c: [5.6, RIGHT_TOP, 0.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.1] },
-  "/resume": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 1.35, 0.57], cam: [0, 0, 0.1] },
-  "/contact": { c: [1.2, WATER_Y + 0.6, 3.4], win: [0, 0.5, 0.8], cam: [0, 0, 0.16] },
+  "/projects": { c: [-4.0, LEFT_TOP, -0.3], win: [0, 2.6, 1.06], cam: [0, 0, -0.45] },
+  "/about": { c: [5.6, RIGHT_TOP, 0.4], win: [0, 1.7, 0.74], cam: [0, 0, -0.4] },
+  "/resume": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 1.35, 0.57], cam: [0, 0, -0.35] },
+  "/contact": { c: [1.2, WATER_Y + 0.6, 3.4], win: [0, 0.5, 0.8], cam: [0, 0, -0.3] },
 };
 
 /** Camera pose that flies INTO a structure's lit window (close up). */
@@ -288,6 +290,17 @@ function DecoTower({
       <mesh position={[0, height / 2, 0]}>
         <cylinderGeometry args={[radius * 0.9, radius, height, 14]} />
         <meshStandardMaterial color={body} roughness={0.85} map={brickTexture()} />
+      </mesh>
+      {/* glowing yellow interior (seen when the camera dives in through a window) */}
+      <mesh position={[0, height / 2, 0]}>
+        <cylinderGeometry args={[radius * 0.8, radius * 0.9, height * 0.98, 14]} />
+        <meshStandardMaterial
+          color={WARM}
+          emissive={WARM}
+          emissiveIntensity={1.1}
+          side={THREE.BackSide}
+          toneMapped={false}
+        />
       </mesh>
       {band && (
         <mesh position={[0, height - 0.25, 0]}>
@@ -676,7 +689,7 @@ export function CastleScene({
       shadows
       dpr={[1, 2]}
       camera={{ position: [-11, 2.6, 15.5], fov: 50 }}
-      gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
+      gl={{ antialias: true, alpha: false }}
       className="!absolute inset-0"
     >
       <SceneContents
@@ -815,7 +828,7 @@ function SceneContents({
     const s = from ? STRUCTURE_BY_ROUTE[from] : undefined;
     if (!s) return;
     const enter = enterPose(from!, new THREE.Vector3(s.c[0], s.c[1], s.c[2]));
-    const HOLD = 750; // pause on the zoomed-in tower before pulling out
+    const HOLD = 250; // brief beat inside the window, then pull out
     const ZOOMOUT = 1700;
     flyRef.current = {
       fromPos: enter.pos,
@@ -1277,6 +1290,19 @@ function Tower({
           roughness={0.85}
           metalness={0.04}
           map={brickTexture()}
+        />
+      </mesh>
+
+      {/* Glowing yellow interior — only seen once the camera dives in through the
+          window, so the whole view fills with the window's colour. */}
+      <mesh position={[0, height / 2, 0]}>
+        <cylinderGeometry args={[radius * 0.78, radius * 0.9, height * 0.98, 16]} />
+        <meshStandardMaterial
+          color={WARM}
+          emissive={WARM}
+          emissiveIntensity={1.1}
+          side={THREE.BackSide}
+          toneMapped={false}
         />
       </mesh>
 
