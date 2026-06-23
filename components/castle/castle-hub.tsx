@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { Box, Boxes, ChevronDown, Sparkles } from "lucide-react";
+import { ChevronDown, Sparkles } from "lucide-react";
 
 import { navItems } from "@/lib/site";
 import type { NavItem } from "@/lib/types";
@@ -54,7 +54,7 @@ export function CastleHub({
    each tower zooms in + warps to its route. Header nav is the a11y fallback.
    ============================================================================ */
 function CastleHero({ items, className }: { items: NavItem[]; className?: string }) {
-  const { show3D, enabled, setEnabled, eligible } = useCastle3D();
+  const { show3D } = useCastle3D();
   const enter = useEnterReveal();
   const sectionRef = React.useRef<HTMLElement>(null);
   const descendRef = React.useRef(0);
@@ -158,19 +158,6 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
             <ChevronDown className="size-5 animate-bounce text-accent-text" aria-hidden />
           )}
         </div>
-
-        {/* 2D/3D toggle */}
-        {eligible && (
-          <button
-            type="button"
-            onClick={() => setEnabled(!enabled)}
-            aria-pressed={show3D}
-            className="absolute right-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-pill border border-border-strong bg-[rgba(11,16,38,0.7)] px-3 py-1.5 text-xs font-semibold text-foreground-muted backdrop-blur transition-all hover:border-accent hover:text-accent-text focus-visible:shadow-focus focus-visible:outline-none"
-          >
-            {show3D ? <Box className="size-3.5" /> : <Boxes className="size-3.5" />}
-            {show3D ? "2D view" : "3D view"}
-          </button>
-        )}
       </div>
     </section>
   );
@@ -180,7 +167,7 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
    Card variant — bounded castle + heading + accessible tower nav (reusable).
    ============================================================================ */
 function CastleCard({ items, className }: { items: NavItem[]; className?: string }) {
-  const { show3D, enabled, setEnabled, eligible } = useCastle3D();
+  const { show3D } = useCastle3D();
 
   return (
     <section
@@ -190,25 +177,11 @@ function CastleCard({ items, className }: { items: NavItem[]; className?: string
     >
       <div className="relative h-[440px] overflow-hidden rounded-card border border-border bg-bg-sunken sm:h-[520px]">
         {show3D ? (
-          <SceneBoundary
-            fallback={<CastleSkeleton label="3D unavailable — showing the 2D castle" />}
-          >
+          <SceneBoundary fallback={<CastleSkeleton label="Summoning the castle…" />}>
             <CastleScene items={items} />
           </SceneBoundary>
         ) : (
           <CastleSilhouette />
-        )}
-
-        {eligible && (
-          <button
-            type="button"
-            onClick={() => setEnabled(!enabled)}
-            aria-pressed={show3D}
-            className="absolute right-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-pill border border-border-strong bg-[rgba(11,16,38,0.7)] px-3 py-1.5 text-xs font-semibold text-foreground-muted backdrop-blur transition-all hover:border-accent hover:text-accent-text focus-visible:shadow-focus focus-visible:outline-none"
-          >
-            {show3D ? <Box className="size-3.5" /> : <Boxes className="size-3.5" />}
-            {show3D ? "2D view" : "3D view"}
-          </button>
         )}
       </div>
 

@@ -106,21 +106,13 @@ export function useHasWebGL(): boolean {
 }
 
 /**
- * Decide whether to render the 3D castle. Mobile gets the same 3D experience as
- * desktop — so the only safety nets are: WebGL must be available, the user must
- * not prefer reduced motion, and the `wiz:castle3d` preference is left on.
- * Returns the decision plus the toggle + mount flag.
+ * Decide whether to render the 3D castle. It's the only experience — there is no
+ * 2D toggle — so the just safety nets are WebGL availability and reduced-motion.
+ * (Both start false until mounted, keeping SSR and the first client render in
+ * sync; the silhouette stands in until then or if 3D can't run.)
  */
-export function useCastle3D(): {
-  show3D: boolean;
-  enabled: boolean;
-  setEnabled: (v: boolean) => void;
-  eligible: boolean;
-  mounted: boolean;
-} {
-  const [enabled, setEnabled, mounted] = usePreference("wiz:castle3d", true);
+export function useCastle3D(): { show3D: boolean } {
   const reduced = usePrefersReducedMotion();
   const webgl = useHasWebGL();
-  const eligible = mounted && webgl && !reduced;
-  return { show3D: eligible && enabled, enabled, setEnabled, eligible, mounted };
+  return { show3D: webgl && !reduced };
 }

@@ -20,9 +20,10 @@ import { usePathname, useRouter } from "next/navigation";
  */
 const FREEZE_ID = "wiz-castle-freeze";
 const MAIN_ID = "main-content";
-const FEATHER = 0.34; // soft edge, fraction of the half-diagonal
-const GROW_MS = 1000;
-const SHRINK_MS = 700;
+const FEATHER = 0.72; // very soft, heavily-gradient edge (fraction of half-diagonal)
+const DIVE = 0.6; // how far the frozen window "dives in" (extra scale) on entry
+const GROW_MS = 1050;
+const SHRINK_MS = 750;
 
 const useIso = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
 
@@ -44,6 +45,12 @@ function captureCastle(): boolean {
 function setFreeze(show: boolean) {
   const f = document.getElementById(FREEZE_ID);
   if (f) f.style.opacity = show && storedFrame ? "1" : "0";
+}
+
+/** Scale the frozen window to fake the camera pushing IN through it (or out). */
+function setFreezeScale(s: number) {
+  const f = document.getElementById(FREEZE_ID);
+  if (f) f.style.transform = `scale(${s})`;
 }
 
 /** content openness: 1 = full screen, 0 = closed to a point (castle revealed). */
@@ -79,14 +86,14 @@ function setContent(v: number) {
   m.style.maskImage = mask;
 }
 
-function animate(from: number, to: number, ms: number, done?: () => void) {
+function animate(ms: number, onProgress: (e: number) => void, done?: () => void) {
   let raf = 0;
   let start: number | null = null;
   const step = (ts: number) => {
     if (start === null) start = ts;
     const t = Math.min((ts - start) / ms, 1);
     const e = 1 - Math.pow(1 - t, 3); // easeOutCubic
-    setContent(from + (to - from) * e);
+    onProgress(e);
     if (t < 1) raf = requestAnimationFrame(step);
     else done?.();
   };
@@ -124,7 +131,14 @@ export function useLeaveReveal() {
       } catch {
         /* ignore */
       }
-      animate(1, 0, SHRINK_MS, () => router.push(href));
+      animate(
+        SHRINK_MS,
+        (e) => {
+          setContent(1 - e); // page shrinks into the window
+          setFreezeScale(1 + DIVE * 0.4 * (1 - e)); // window eases back out
+        },
+        () => router.push(href),
+      );
     },
     [router],
   );
@@ -146,15 +160,25 @@ export function RevealController() {
     }
     if (enter) {
       setContent(0); // hide the destination before first paint
-      const cancel = animate(0, 1, GROW_MS, () => {
-        setContent(1);
-        setFreeze(false);
-      });
+      setFreezeScale(1);
+      const cancel = animate(
+        GROW_MS,
+        (e) => {
+          setContent(e); // the page grows out of the window
+          setFreezeScale(1 + DIVE * e); // ...while we dive IN through it
+        },
+        () => {
+          setContent(1);
+          setFreeze(false);
+          setFreezeScale(1);
+        },
+      );
       return cancel;
     }
     if (back) {
       // The shrink already revealed the castle; reset and let the live one take over.
       setContent(1);
+      setFreezeScale(1);
       const to = window.setTimeout(() => setFreeze(false), 500);
       return () => window.clearTimeout(to);
     }
