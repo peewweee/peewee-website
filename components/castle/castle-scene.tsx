@@ -32,7 +32,6 @@ const ROCK_LT = "#565d72";
 const BRIDGE = WHITE; // brown viaduct stone, matching the towers
 const WARM = "#ffcf6b";
 const WATER = "#0b1734";
-const PAGE_BG = "#0b1026"; // matches the page background (--bg) for the tower interiors
 
 /* ----------------------------------------------------------------------------
    Anchoring heights — every structure sits flush on a plateau top.
@@ -58,14 +57,14 @@ const TOWERS: { position: Vec3; height: number; radius: number }[] = [
 const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; win: Vec3; cam: Vec3 }> = {
   // Great Hall — the window on the front tower (DecoTower at z = depth/2 + 0.1).
   // `cam` is slightly NEGATIVE: the camera flies just PAST the middle of the
-  // window (a hair inside, where the blue interior fills the view) — not all the
+  // window (a hair inside, where the yellow interior fills the view) — not all the
   // way into the tower.
-  "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], win: [0, 1.4, 3.41], cam: [0, 0, -0.12] },
+  "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], win: [0, 1.4, 3.41], cam: [0, 0.1, 0.14] },
   // Towers — a mid window on the front face (y = height*0.5, z = radius*0.92).
-  "/projects": { c: [-4.0, LEFT_TOP, -0.3], win: [0, 2.6, 1.06], cam: [0, 0, -0.1] },
-  "/about": { c: [5.6, RIGHT_TOP, 0.4], win: [0, 1.7, 0.74], cam: [0, 0, -0.1] },
-  "/resume": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 1.35, 0.57], cam: [0, 0, -0.1] },
-  "/contact": { c: [1.2, WATER_Y + 0.6, 3.4], win: [0, 0.5, 0.8], cam: [0, 0, -0.1] },
+  "/projects": { c: [-4.0, LEFT_TOP, -0.3], win: [0, 2.6, 1.06], cam: [0, 0, 0.13] },
+  "/about": { c: [5.6, RIGHT_TOP, 0.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.14] },
+  "/resume": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 1.35, 0.57], cam: [0, 0, 0.14] },
+  "/contact": { c: [1.2, WATER_Y + 0.6, 3.4], win: [0, 0.5, 0.8], cam: [0, 0, 0.11] },
 };
 
 /** Camera pose that flies INTO a structure's lit window (close up). */
@@ -76,8 +75,8 @@ function enterPose(href: string, center: THREE.Vector3) {
   const win = new THREE.Vector3(center.x + w[0], center.y + w[1], center.z + w[2]);
   return {
     // Aim straight THROUGH the window, deeper into the tower (windows face +z, so
-    // -z is inward), so the POV faces the blue interior as it flies in.
-    look: new THREE.Vector3(win.x, win.y, win.z - 0.8),
+    // -z is inward), so the POV faces the yellow interior as it flies in.
+    look: new THREE.Vector3(win.x, win.y, win.z - 1),
     pos: new THREE.Vector3(win.x + cam[0], win.y + cam[1], win.z + cam[2]),
   };
 }
@@ -295,10 +294,17 @@ function DecoTower({
         <cylinderGeometry args={[radius * 0.9, radius, height, 14]} />
         <meshStandardMaterial color={body} roughness={0.85} map={brickTexture()} />
       </mesh>
-      {/* page-blue interior (seen when the camera dives in through a window) */}
+      {/* glowing yellow interior, set well inside the wall (a wide gap) so it
+          never bleeds through the brick from outside; fills the view once inside */}
       <mesh position={[0, height / 2, 0]}>
-        <cylinderGeometry args={[radius * 0.8, radius * 0.9, height * 0.98, 14]} />
-        <meshBasicMaterial color={PAGE_BG} side={THREE.BackSide} toneMapped={false} />
+        <cylinderGeometry args={[radius * 0.7, radius * 0.82, height * 0.98, 20]} />
+        <meshStandardMaterial
+          color={WARM}
+          emissive={WARM}
+          emissiveIntensity={1.2}
+          side={THREE.BackSide}
+          toneMapped={false}
+        />
       </mesh>
       {band && (
         <mesh position={[0, height - 0.25, 0]}>
@@ -798,7 +804,7 @@ function SceneContents({
       if (navigatedRef.current) return;
       navigatedRef.current = true;
       const enter = enterPose(item.href, pos);
-      const DURATION = 1900;
+      const DURATION = 1600;
       flyRef.current = {
         fromPos: new THREE.Vector3(),
         fromLook: new THREE.Vector3(),
@@ -808,6 +814,8 @@ function SceneContents({
         startWall: performance.now(),
         captured: false,
       };
+      // Fire the reveal exactly when the camera lands in the window (same as the
+      // fly duration) so the screen is already full yellow — no brick→yellow pop.
       drive(DURATION, undefined, () => handleArrive(item.href));
     },
     [drive, handleArrive],
@@ -1291,12 +1299,17 @@ function Tower({
         />
       </mesh>
 
-      {/* Page-blue interior — only seen once the camera dives in through the
-          window, so the view fills with the page background colour and the
-          destination grows seamlessly out of it. */}
+      {/* Glowing yellow interior, set well inside the wall (a wide gap) so it
+          never bleeds through the brick from outside; fills the view once inside. */}
       <mesh position={[0, height / 2, 0]}>
-        <cylinderGeometry args={[radius * 0.78, radius * 0.9, height * 0.98, 16]} />
-        <meshBasicMaterial color={PAGE_BG} side={THREE.BackSide} toneMapped={false} />
+        <cylinderGeometry args={[radius * 0.7, radius * 0.82, height * 0.98, 24]} />
+        <meshStandardMaterial
+          color={WARM}
+          emissive={WARM}
+          emissiveIntensity={1.2}
+          side={THREE.BackSide}
+          toneMapped={false}
+        />
       </mesh>
 
       <Crenellations

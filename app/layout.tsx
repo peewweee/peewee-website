@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { ConditionalFooter } from "@/components/conditional-footer";
 import { SortingHat } from "@/components/sorting-hat/sorting-hat";
 import { Atmosphere } from "@/components/atmosphere/atmosphere";
-import { RevealController } from "@/components/page-reveal";
+import { PortalTransition } from "@/components/portal-transition";
 import { BackToCastle } from "@/components/back-to-castle";
 
 export const metadata: Metadata = {
@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <div className="flex min-h-dvh flex-col">
           <SiteHeader />
-          <main id="main-content" className="relative z-10 flex-1">
+          <main id="main-content" className="flex-1">
             {children}
           </main>
           <ConditionalFooter />
@@ -52,7 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Global, on every page (Phase 3/4 stubs) */}
         <SortingHat />
         <Atmosphere />
-        <RevealController />
+        <PortalTransition />
         <BackToCastle />
       </body>
     </html>

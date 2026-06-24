@@ -13,9 +13,11 @@ import { CastleSilhouette, CastleTowerNav } from "./castle-fallback";
 
 // Heavy three.js bundle — code-split and loaded client-side only, on demand.
 // (Keep ALL @react-three/* imports inside this lazy module, never in the hub.)
+// While the chunk loads we render nothing (the dark page background shows) — no
+// 2D silhouette, so returning to the home page never flashes a flat castle.
 const CastleScene = dynamic(() => import("./castle-scene").then((m) => m.CastleScene), {
   ssr: false,
-  loading: () => <CastleSkeleton label="Summoning the castle…" />,
+  loading: () => null,
 });
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
@@ -54,7 +56,6 @@ export function CastleHub({
    each tower zooms in + warps to its route. Header nav is the a11y fallback.
    ============================================================================ */
 function CastleHero({ items, className }: { items: NavItem[]; className?: string }) {
-  const { show3D } = useCastle3D();
   const enter = useEnterReveal();
   const sectionRef = React.useRef<HTMLElement>(null);
   const descendRef = React.useRef(0);
@@ -71,7 +72,6 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
   // scroll), fading the title out. Near the end the bright-yellow window glow
   // fills the screen, then we navigate to /great-hall.
   React.useEffect(() => {
-    if (!show3D) return;
     const section = sectionRef.current;
     if (!section) return;
     let raf = 0;
@@ -85,7 +85,7 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
         titleRef.current.style.opacity = String(1 - clamp01(d / 0.22));
       }
       invalidateRef.current();
-      if (d >= 0.98 && !navigatedRef.current) {
+      if (d >= 0.995 && !navigatedRef.current) {
         navigatedRef.current = true;
         enter("/great-hall");
       }
@@ -101,42 +101,28 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       window.removeEventListener("resize", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [show3D, enter]);
-
-  const tall = show3D; // 3D pins and scrubs; 2D is a single static screen
+  }, [enter]);
 
   return (
     <section
       ref={sectionRef}
       aria-label="The castle — site navigation"
       data-castle-mount="3d"
-      className={cn(
-        "relative w-full",
-        tall ? "h-[320vh]" : "h-[calc(100svh-4rem)]",
-        className,
-      )}
+      className={cn("relative h-[320vh] w-full", className)}
     >
-      <div
-        className={cn(
-          "overflow-hidden",
-          tall ? "sticky top-16 h-[calc(100svh-4rem)]" : "relative h-[calc(100svh-4rem)]",
-        )}
-      >
+      <div className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden">
         <div className="absolute inset-0">
-          {show3D ? (
-            <SceneBoundary fallback={<CastleSilhouette />}>
-              <CastleScene
-                items={items}
-                descendRef={descendRef}
-                onReady={(fn) => {
-                  invalidateRef.current = fn;
-                  fn();
-                }}
-              />
-            </SceneBoundary>
-          ) : (
-            <CastleSilhouette />
-          )}
+          {/* Only ever the 3D castle — no 2D silhouette to flash on (re)mount. */}
+          <SceneBoundary fallback={null}>
+            <CastleScene
+              items={items}
+              descendRef={descendRef}
+              onReady={(fn) => {
+                invalidateRef.current = fn;
+                fn();
+              }}
+            />
+          </SceneBoundary>
         </div>
 
         {/* Title overlay — top-left, high enough to clear the castle; fades on scroll */}
@@ -152,11 +138,9 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
         {/* Hint */}
         <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex flex-col items-center gap-1 text-foreground-muted">
           <span className="text-[11px] uppercase tracking-[0.2em]">
-            {show3D ? "Scroll to enter · or click a tower" : "Use the menu to explore"}
+            Scroll to enter · or click a tower
           </span>
-          {show3D && (
-            <ChevronDown className="size-5 animate-bounce text-accent-text" aria-hidden />
-          )}
+          <ChevronDown className="size-5 animate-bounce text-accent-text" aria-hidden />
         </div>
       </div>
     </section>
