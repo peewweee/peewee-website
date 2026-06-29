@@ -44,10 +44,15 @@ const RIGHT_TOP = 0.2;
 /* Interactive nav towers (Projects/About/Resume). Index 0 (Great Hall) is a
    building, handled separately; Contact lives in the header nav. Each tower
    sits on its plateau top. */
-const TOWERS: { position: Vec3; height: number; radius: number }[] = [
-  { position: [-4.0, LEFT_TOP, -0.3], height: 5.2, radius: 1.15 }, // Projects — Main Astronomy Tower (tallest, thickest)
-  { position: [5.6, RIGHT_TOP, 0.4], height: 3.4, radius: 0.8 }, // About — Main Right Tower
-  { position: [2.4, RIGHT_TOP, 0.7], height: 2.7, radius: 0.62 }, // Resume — Castellated Bridge Tower
+const TOWERS: {
+  position: Vec3;
+  height: number;
+  radius: number;
+  windows?: number[]; // window heights as fractions of `height`; omit = default 4, [] = none
+}[] = [
+  { position: [-4.5, LEFT_TOP, -0.3], height: 5.8, radius: 1.5 }, // Projects — Main Astronomy Tower (tallest, thickest)
+  { position: [5.6, RIGHT_TOP, 1], height: 3.4, radius: 0.8 }, // About — Main Right Tower (forward, by the viaduct end)
+  { position: [2.4, RIGHT_TOP, 0.7], height: 4.7, radius: 0.62 }, // Resume — Castellated Bridge Tower
 ];
 
 // Route → its structure. `win` = offset (from the plateau-base center `c`) of an
@@ -61,10 +66,11 @@ const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; win: Vec3; cam: Vec3 }> = {
   // way into the tower.
   "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], win: [0, 1.4, 3.41], cam: [0, 0.1, 0.14] },
   // Towers — a mid window on the front face (y = height*0.5, z = radius*0.92).
-  "/projects": { c: [-4.0, LEFT_TOP, -0.3], win: [0, 2.6, 1.06], cam: [0, 0, 0.13] },
-  "/about": { c: [5.6, RIGHT_TOP, 0.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.14] },
-  "/resume": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 1.35, 0.57], cam: [0, 0, 0.14] },
-  "/contact": { c: [1.2, WATER_Y + 0.6, 3.4], win: [0, 0.5, 0.8], cam: [0, 0, 0.11] },
+  "/projects": { c: [-4.5, LEFT_TOP, -0.3], win: [0, 1.97, 0.5], cam: [0, 0, 1.08] },
+  "/about": { c: [5.6, RIGHT_TOP, 1.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.14] },
+  "/resume": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 3.9, 0.57], cam: [0, 0, 0.14] },
+  // Owlery — a tall slim tower behind/left of About; single window high under the roof.
+  "/contact": { c: [5.0, RIGHT_TOP, -0.5], win: [0, 5.87, 0.47], cam: [0, 0, 0.14] },
 };
 
 /** Camera pose that flies INTO a structure's lit window (close up). */
@@ -82,7 +88,7 @@ function enterPose(href: string, center: THREE.Vector3) {
 }
 
 // Camera: low, three-quarter front-LEFT (left close & prominent, right recedes).
-const WIDE_POS = new THREE.Vector3(-11, 2.6, 15.5);
+const WIDE_POS = new THREE.Vector3(-14, 2.3, 20);
 const WIDE_LOOK = new THREE.Vector3(1, 4, -2);
 // The scroll "dive" flies into the Great Hall's window (left).
 const GREAT_HALL_ENTER = enterPose("/great-hall", new THREE.Vector3(-6.6, LEFT_TOP, 0.3));
@@ -118,7 +124,7 @@ function makeArchWall(spanCount: number, archW: number, pierW: number, wallH: nu
   return { shape, totalW };
 }
 
-const BRIDGE_DEPTH = 1.4;
+const BRIDGE_DEPTH = 0.8;
 const BRIDGE_BOTTOM = -3.0;
 const LOWER_TIER = makeArchWall(5, 0.95, 0.42, 2.1); // five tall open arches
 const UPPER_TIER = makeArchWall(10, 0.42, 0.22, 0.9);
@@ -359,7 +365,7 @@ function Spire({
         <meshStandardMaterial color={body} roughness={0.85} map={brickTexture()} />
       </mesh>
       <mesh position={[0, height + radius * 1.6, 0]}>
-        <coneGeometry args={[radius * 1.2, radius * 3.2, 12]} />
+        <coneGeometry args={[radius * 1.2, radius * 7.2, 12]} />
         <meshStandardMaterial color={roof} roughness={0.7} map={roofTexture()} />
       </mesh>
     </group>
@@ -439,13 +445,13 @@ function GableHall({
         return (
           <React.Fragment key={i}>
             <Glow
-              position={[width / 2 + 0.03, height * 0.5, z]}
+              position={[width / 2 - 0.025, height * 0.5, z]}
               size={[0.06, 0.5, 0.18]}
               register={registerWindow}
             />
             {bothSides && (
               <Glow
-                position={[-width / 2 - 0.03, height * 0.5, z]}
+                position={[-width / 2 + 0.025, height * 0.5, z]}
                 size={[0.06, 0.5, 0.18]}
                 register={registerWindow}
               />
@@ -466,57 +472,20 @@ function GableHall({
   );
 }
 
-function ArchDoor({
-  position,
-  width = 0.8,
-  height = 1.3,
-  color = "#5b4bd6",
-  intensity = 1.1,
-  rotation,
-}: {
-  position: Vec3;
-  width?: number;
-  height?: number;
-  color?: string;
-  intensity?: number;
-  rotation?: Vec3;
-}) {
-  return (
-    <group position={position} rotation={rotation}>
-      <mesh position={[0, height / 2, 0]}>
-        <boxGeometry args={[width, height, 0.1]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={intensity}
-          toneMapped={false}
-        />
-      </mesh>
-      <mesh position={[0, height, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[width / 2, width / 2, 0.1, 16, 1, false, 0, Math.PI]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={intensity}
-          toneMapped={false}
-        />
-      </mesh>
-    </group>
-  );
-}
-
 function Rock({
   position,
   scale,
   color = ROCK,
+  detail = 1,
 }: {
   position: Vec3;
   scale: Vec3;
   color?: string;
+  detail?: number; // icosahedron subdivisions; higher = rounder / less pointy
 }) {
   return (
     <mesh position={position} scale={scale}>
-      <icosahedronGeometry args={[1, 1]} />
+      <icosahedronGeometry args={[1, detail]} />
       <meshStandardMaterial color={color} flatShading roughness={1} map={rockTexture()} />
     </mesh>
   );
@@ -552,13 +521,22 @@ function Plateau({
 function LeftCliff() {
   return (
     <group>
-      <Plateau cx={-5} cz={-0.4} top={LEFT_TOP} rTop={3.5} rBot={4.6} color={ROCK} />
+      {/* widened so the rock reaches under the courtyard, out toward the viaduct */}
+      <Plateau cx={-5} cz={-0.4} top={LEFT_TOP} rTop={2.2} rBot={5.2} color={ROCK} />
+      {/* broad rock under the Great Hall so its (slanted) floor never floats */}
+      <Plateau cx={-7.2} cz={0.3} top={LEFT_TOP} rTop={3.6} rBot={4.7} color={ROCK} />
       {/* craggy accents on the flanks */}
       <Rock position={[-7.6, -1.4, -0.2]} scale={[1.7, 2.8, 1.7]} color={ROCK_DK} />
       <Rock position={[-2.4, -1.6, 0.6]} scale={[1.4, 2.6, 1.4]} color={ROCK_LT} />
       {/* tall jagged peaks rising behind the buildings */}
       <Rock position={[-6.6, 0.6, -2.8]} scale={[1.5, 2.8, 1.4]} color={ROCK_DK} />
       <Rock position={[-4.4, 0.3, -3.2]} scale={[1.3, 2.4, 1.3]} color={ROCK} />
+      {/* long descending ridge to the SW (camera POV) — rounded boulders,
+          stepping down to the water */}
+      <Rock position={[-6.4, -5.07, 6]} scale={[3.0, 6, 2]} color={ROCK} detail={2} />
+      <Rock position={[-8, -1.8, 5.7]} scale={[2, 2.7, 2.2]} color={ROCK_DK} detail={2} />
+      <Rock position={[-8.0, -3, 7.3]} scale={[1.9, 2.8, 2.0]} color={ROCK} detail={2} />
+      <Rock position={[-7.5, -3.8, 9.2]} scale={[1.6, 2.6, 1.8]} color={ROCK_DK} detail={2} />
     </group>
   );
 }
@@ -584,12 +562,14 @@ function DeckWing({
   width,
   height,
   depth = 1.3,
+  z = 0,
 }: {
   x: number;
   deckTop: number;
   width: number;
   height: number;
   depth?: number;
+  z?: number;
 }) {
   const winCount = Math.max(2, Math.round(width / 0.95));
   const rise = depth * 0.6;
@@ -597,7 +577,7 @@ function DeckWing({
   const slope = Math.sqrt(hd * hd + rise * rise);
   const ang = Math.atan2(rise, hd);
   return (
-    <group position={[x, deckTop, 0]}>
+    <group position={[x, deckTop, z]}>
       <mesh position={[0, height / 2, 0]}>
         <boxGeometry args={[width, height, depth]} />
         <meshStandardMaterial color={WHITE} roughness={0.85} map={brickTexture()} />
@@ -639,23 +619,17 @@ function Viaduct({ position = [0, 0, 0] as Vec3 }: { position?: Vec3 }) {
         <meshStandardMaterial color={BRIDGE} roughness={0.9} flatShading />
       </mesh>
       <mesh position={[0, BRIDGE_BOTTOM + 2.1 + 0.9 + 0.09, 0]}>
-        <boxGeometry args={[LOWER_TIER.totalW + 0.5, 0.18, BRIDGE_DEPTH + 0.6]} />
+        <boxGeometry args={[LOWER_TIER.totalW + 0.4, 0.18, BRIDGE_DEPTH + 0.25]} />
         <meshStandardMaterial color={BRIDGE} roughness={0.85} map={roofTexture()} />
       </mesh>
 
-      {/* Two wide rectangular wings filling the deck, joining both clusters */}
-      <DeckWing
-        x={-1.7}
-        deckTop={BRIDGE_BOTTOM + 2.1 + 0.9 + 0.18}
-        width={3.7}
-        height={2.2}
-      />
-      <DeckWing
-        x={1.8}
-        deckTop={BRIDGE_BOTTOM + 2.1 + 0.9 + 0.18}
-        width={3.5}
-        height={1.5}
-      />
+      {/* Dark recessed wall just behind the arches so the openings read as deep,
+          shadowed holes instead of see-through gaps. */}
+      <mesh position={[0, BRIDGE_BOTTOM + 1.5, -BRIDGE_DEPTH / 2 - 0.06]}>
+        <boxGeometry args={[LOWER_TIER.totalW, 3.0, 0.08]} />
+        <meshStandardMaterial color="#0a0c14" roughness={1} />
+      </mesh>
+
     </group>
   );
 }
@@ -804,7 +778,7 @@ function SceneContents({
       if (navigatedRef.current) return;
       navigatedRef.current = true;
       const enter = enterPose(item.href, pos);
-      const DURATION = 1600;
+      const DURATION = 1900;
       flyRef.current = {
         fromPos: new THREE.Vector3(),
         fromLook: new THREE.Vector3(),
@@ -906,7 +880,13 @@ function SceneContents({
       <Water />
       <LeftCliff />
       <RightCliff />
-      <Viaduct position={[0, 0, 0.4]} />
+      <Viaduct position={[0, 0, 2.3]} />
+      {/* The two rectangular deck towers — standalone (NOT children of the bridge,
+          so moving the bridge never drags them), set back toward the castle. */}
+      <DeckWing x={-1.65} z={0.1} deckTop={BRIDGE_BOTTOM + 2.1 + 0.9 + 0.18} width={3.7} height={2.2} />
+      <DeckWing x={2} z={0} deckTop={BRIDGE_BOTTOM + 2.1 + 0.9 + 0.18} width={3.5} height={1.5} />
+      {/* Rock beneath those towers so they don't float. */}
+      <Rock position={[0, -1.5, -0.2]} scale={[4.4, 3.0, 1.3]} color={ROCK} />
 
       <CameraRig flyRef={flyRef} descendRef={descendRef} />
       <CastleBackdrop />
@@ -920,7 +900,10 @@ function SceneContents({
         />
       )}
 
-      {/* The four cylindrical nav towers */}
+      {/* Courtyard between the Great Hall complex and the start of the viaduct */}
+      <Courtyard position={[-6.8, LEFT_TOP, 4.3]} />
+
+      {/* The cylindrical nav towers (Projects / About / Resume) */}
       {navTowers.map((item, i) => (
         <Tower
           key={item.href}
@@ -929,9 +912,19 @@ function SceneContents({
           position={TOWERS[i].position}
           height={TOWERS[i].height}
           radius={TOWERS[i].radius}
+          winFs={TOWERS[i].windows}
           onSelect={handleSelect}
         />
       ))}
+
+      {/* The Owlery (Contact) — a tall slim tower behind About */}
+      {items[4] && (
+        <Owlery
+          item={items[4]}
+          position={[5.0, RIGHT_TOP, -0.4]}
+          onSelect={handleSelect}
+        />
+      )}
 
       <EffectComposer>
         <Bloom
@@ -1026,36 +1019,6 @@ function CastleBackdrop() {
         <Glow position={[0, 1.2, 0.36]} size={[0.08, 0.4, 0.05]} />
       </group>
 
-      {/* The boathouse — at the water's edge in front of the chasm */}
-      <group position={[1.2, WATER_Y, 3.4]}>
-        <mesh position={[0, 0.5, 0]}>
-          <boxGeometry args={[1.4, 1, 1.7]} />
-          <meshStandardMaterial color={WHITE} roughness={0.85} map={brickTexture()} />
-        </mesh>
-        <mesh position={[-0.38, 1.32, 0]} rotation={[0, 0, 0.82]}>
-          <boxGeometry args={[1.25, 0.12, 1.8]} />
-          <meshStandardMaterial color={SLATE} roughness={0.7} map={roofTexture()} />
-        </mesh>
-        <mesh position={[0.38, 1.32, 0]} rotation={[0, 0, -0.82]}>
-          <boxGeometry args={[1.25, 0.12, 1.8]} />
-          <meshStandardMaterial color={SLATE} roughness={0.7} map={roofTexture()} />
-        </mesh>
-        {/* narrow tower from the peak */}
-        <Spire
-          position={[0, 1.55, 0.5]}
-          radius={0.13}
-          height={0.7}
-          body={WHITE}
-          roof={SLATE}
-        />
-        <ArchDoor
-          position={[0, 0, 0.87]}
-          width={0.55}
-          height={0.9}
-          color={WARM}
-          intensity={1.8}
-        />
-      </group>
     </group>
   );
 }
@@ -1114,18 +1077,26 @@ function GreatHallBuilding({
         onSelect(item, new THREE.Vector3(position[0], position[1], position[2]));
       }}
     >
-      <GableHall
-        position={[0, 0, 0]}
-        width={width}
-        depth={depth}
-        height={height}
-        windows={6}
-        ridgeSpireCount={4}
-        steep={0.75}
-        coverFront
-        bothSides
-        registerWindow={registerWindow}
-      />
+      {/* Slant the long hall: pivot at its front edge so the BACK swings to the
+          left (-x, camera POV). The front tower stays put (keeps its window). */}
+      <group position={[0, 0, depth / 2]} rotation={[0, 0.3, 0]}>
+        <GableHall
+          position={[0, 0, -depth / 2]}
+          width={width}
+          depth={depth}
+          height={height}
+          windows={6}
+          ridgeSpireCount={0}
+          steep={0.75}
+          coverFront
+          bothSides
+          registerWindow={registerWindow}
+        />
+        {/* three very thin turrets along the roof ridge: front, middle, back */}
+        <Spire position={[0, height + rh - 0.15, -0.1]} radius={0.13} height={0.7} body={WHITE} roof={SLATE} />
+        <Spire position={[0, height + rh - 0.15, -depth / 2]} radius={0.2} height={0.9} body={WHITE} roof={SLATE} />
+        <Spire position={[0, height + rh - 0.15, -depth + 0.1]} radius={0.13} height={0.7} body={WHITE} roof={SLATE} />
+      </group>
       {/* tower connected to the front end of the hall */}
       <DecoTower
         position={[0, 0, depth / 2 + 0.1]}
@@ -1133,6 +1104,7 @@ function GreatHallBuilding({
         height={height + 0.8}
         body={WHITE}
         roof={SLATE}
+        crenel
         windows={2}
         registerWindow={registerWindow}
       />
@@ -1154,6 +1126,69 @@ function GreatHallBuilding({
           {item.label}
         </button>
       </Html>
+    </group>
+  );
+}
+
+/* ============================================================================
+   The Courtyard — a flat, cloister-bordered quadrangle on the left plateau,
+   between the Great Hall complex and the start of the viaduct (the bridgehead).
+   ============================================================================ */
+function Courtyard({
+  position,
+  w = 2.0,
+  d = 3.6,
+}: {
+  position: Vec3;
+  w?: number;
+  d?: number;
+}) {
+  const colH = 0.45; // covered-walkway height
+  const hw = w / 2;
+  const hd = d / 2;
+  const pillar = (x: number, z: number, key: string) => (
+    <mesh key={key} position={[x, colH / 2, z]}>
+      <boxGeometry args={[0.12, colH, 0.12]} />
+      <meshStandardMaterial color={WHITE} roughness={0.85} map={brickTexture()} />
+    </mesh>
+  );
+  const pillars: React.ReactNode[] = [];
+  const nz = 12;
+  const nx = 10;
+  for (let i = 0; i < nz; i++) {
+    const z = -hd + (d / (nz - 1)) * i;
+    pillars.push(pillar(-hw, z, `l${i}`), pillar(hw, z, `r${i}`));
+  }
+  for (let i = 1; i < nx - 1; i++) {
+    const x = -hw + (w / (nx - 1)) * i;
+    pillars.push(pillar(x, -hd, `b${i}`), pillar(x, hd, `f${i}`));
+  }
+  return (
+    <group position={position}>
+      {/* flat quadrangle floor */}
+      <mesh position={[0, 0.03, 0]}>
+        <boxGeometry args={[w, 0.06, d]} />
+        <meshStandardMaterial color={WHITE_DK} roughness={0.95} map={rockTexture()} />
+      </mesh>
+      {/* cloister colonnade — rows of small open bays framing the quad */}
+      {pillars}
+      {/* covered-walkway roof strips around the border */}
+      <mesh position={[-hw, colH + 0.05, 0]}>
+        <boxGeometry args={[0.34, 0.08, d + 0.12]} />
+        <meshStandardMaterial color={WHITE} roughness={0.7} map={roofTexture()} />
+      </mesh>
+      <mesh position={[hw, colH + 0.05, 0]}>
+        <boxGeometry args={[0.34, 0.08, d + 0.12]} />
+        <meshStandardMaterial color={WHITE} roughness={0.7} map={roofTexture()} />
+      </mesh>
+      <mesh position={[0, colH + 0.05, -hd]}>
+        <boxGeometry args={[w, 0.08, 0.34]} />
+        <meshStandardMaterial color={WHITE} roughness={0.7} map={roofTexture()} />
+      </mesh>
+      <mesh position={[0, colH + 0.05, hd]}>
+        <boxGeometry args={[w, 0.08, 0.34]} />
+        <meshStandardMaterial color={WHITE} roughness={0.7} map={roofTexture()} />
+      </mesh>
     </group>
   );
 }
@@ -1235,6 +1270,7 @@ function Tower({
   radius,
   theme,
   onSelect,
+  winFs = [0.34, 0.5, 0.66, 0.82],
 }: {
   item: NavItem;
   position: Vec3;
@@ -1242,13 +1278,15 @@ function Tower({
   radius: number;
   theme: CastleTheme;
   onSelect: (item: NavItem, pos: THREE.Vector3) => void;
+  /** Window heights as fractions of the tower height. [] = no windows. */
+  winFs?: number[];
 }) {
   const [hovered, setHovered] = React.useState(false);
   useCursor(hovered);
 
   const roofRef = React.useRef<THREE.MeshStandardMaterial>(null);
   const winRefs = React.useRef<THREE.MeshStandardMaterial[]>([]);
-  const coneH = radius * 2.7;
+  const coneH = radius * 3;
 
   React.useEffect(() => {
     invalidate();
@@ -1276,8 +1314,6 @@ function Tower({
     e?.stopPropagation();
     onSelect(item, new THREE.Vector3(position[0], position[1], position[2]));
   };
-
-  const winYs = [0.34, 0.5, 0.66, 0.82].map((f) => height * f);
 
   return (
     <group
@@ -1332,20 +1368,25 @@ function Tower({
         />
       </mesh>
 
-      {winYs.map((y, i) => (
-        <mesh key={i} position={[0, y, radius * 0.92]}>
-          <boxGeometry args={[0.18, 0.42, 0.06]} />
-          <meshStandardMaterial
-            ref={(m) => {
-              if (m) winRefs.current[i] = m;
-            }}
-            color={WARM}
-            emissive={WARM}
-            emissiveIntensity={1.2}
-            toneMapped={false}
-          />
-        </mesh>
-      ))}
+      {winFs.map((f, i) => {
+        // Match the cylinder's taper (radiusTop = radius*0.86) so every window
+        // sits flush on the wall instead of embedding (the low ones looked chipped).
+        const localR = radius * (1 - 0.14 * f);
+        return (
+          <mesh key={i} position={[0, height * f, localR - 0.02]}>
+            <boxGeometry args={[0.18, 0.42, 0.06]} />
+            <meshStandardMaterial
+              ref={(m) => {
+                if (m) winRefs.current[i] = m;
+              }}
+              color={WARM}
+              emissive={WARM}
+              emissiveIntensity={1.2}
+              toneMapped={false}
+            />
+          </mesh>
+        );
+      })}
       {[-0.3, -0.1, 0.1, 0.3].map((x, i) => (
         <Glow
           key={i}
@@ -1356,6 +1397,153 @@ function Tower({
       ))}
 
       <Html position={[0, height + coneH + 0.5, 0]} center zIndexRange={[20, 0]}>
+        <button
+          type="button"
+          onClick={() => select()}
+          aria-label={`Go to ${item.label}`}
+          className={`pointer-events-auto flex items-center gap-1.5 whitespace-nowrap rounded-pill border bg-[rgba(11,16,38,0.82)] px-3 py-1.5 text-xs font-semibold text-accent-text shadow-glow-sm backdrop-blur transition-all hover:border-accent hover:shadow-glow focus-visible:shadow-focus focus-visible:outline-none ${
+            hovered
+              ? "border-accent shadow-glow"
+              : "border-[rgba(var(--accent-glow),0.5)]"
+          }`}
+        >
+          <span aria-hidden>{item.glyph}</span>
+          {item.label}
+        </button>
+      </Html>
+    </group>
+  );
+}
+
+/* ============================================================================
+   The Owlery — interactive nav tower (Contact). Tall & slim with a conical roof,
+   battlements, a single high window just under the roof, and a small side turret
+   (viewer's right) with its own cone. Sits behind the About tower.
+   ============================================================================ */
+function Owlery({
+  item,
+  position,
+  onSelect,
+}: {
+  item: NavItem;
+  position: Vec3;
+  onSelect: (item: NavItem, pos: THREE.Vector3) => void;
+}) {
+  const [hovered, setHovered] = React.useState(false);
+  useCursor(hovered);
+  const winRef = React.useRef<THREE.MeshStandardMaterial>(null);
+
+  React.useEffect(() => {
+    invalidate();
+  }, [hovered]);
+
+  useFrame(() => {
+    const m = winRef.current;
+    if (!m) return;
+    const d = (hovered ? 2.3 : 1.2) - m.emissiveIntensity;
+    m.emissiveIntensity += d * 0.15;
+    if (Math.abs(d) > 0.01) invalidate();
+  });
+
+  const radius = 0.5; // slimmer than About (0.8)
+  const height = 6.9; // taller than About (3.4) / Great Hall, shorter than Projects (5.2)
+  const coneH = radius * 2.7;
+  const winF = 0.85; // window high up, just below the roof
+  const winLocalR = radius * (1 - 0.14 * winF); // sit flush on the tapered wall
+
+  // small side turret on the viewer's right (+x), near the top
+  const tR = 0.15;
+  const tH = 4.8; // taller than the main tower so its top clears it from the camera POV
+  const tConeH = tR * 2.6;
+
+  const select = (e?: ThreeEvent<MouseEvent>) => {
+    e?.stopPropagation();
+    onSelect(item, new THREE.Vector3(position[0], position[1], position[2]));
+  };
+
+  return (
+    <group
+      position={position}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        setHovered(true);
+      }}
+      onPointerOut={() => setHovered(false)}
+      onClick={select}
+    >
+      {/* body */}
+      <mesh position={[0, height / 2, 0]}>
+        <cylinderGeometry args={[radius * 0.86, radius, height, 16]} />
+        <meshStandardMaterial
+          color={WHITE}
+          roughness={0.85}
+          metalness={0.04}
+          map={brickTexture()}
+        />
+      </mesh>
+
+      {/* glowing yellow interior (fills the view once the camera is inside) */}
+      <mesh position={[0, height / 2, 0]}>
+        <cylinderGeometry args={[radius * 0.7, radius * 0.82, height * 0.98, 20]} />
+        <meshStandardMaterial
+          color={WARM}
+          emissive={WARM}
+          emissiveIntensity={1.2}
+          side={THREE.BackSide}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* battlements */}
+      <Crenellations
+        radius={radius * 0.92}
+        y={height + 0.04}
+        count={Math.max(8, Math.round(radius * 18))}
+        size={[radius * 0.22, 0.3, radius * 0.22]}
+      />
+
+      {/* conical roof */}
+      <mesh position={[0, height + coneH / 2 + 0.1, 0]}>
+        <coneGeometry args={[radius * 1.2, coneH, 18]} />
+        <meshStandardMaterial
+          color={SLATE}
+          map={roofTexture()}
+          roughness={0.6}
+          metalness={0.2}
+        />
+      </mesh>
+
+      {/* the single high window — front (+z) face, just below the roof */}
+      <mesh position={[0, height * winF, winLocalR - 0.02]}>
+        <boxGeometry args={[0.16, 0.4, 0.06]} />
+        <meshStandardMaterial
+          ref={winRef}
+          color={WARM}
+          emissive={WARM}
+          emissiveIntensity={1.2}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* small side turret (viewer's right) — rises above the main tower so it's
+          visible from the camera POV (its body is on the far +x side). */}
+      <group position={[radius * 0.92, height + 1.6 - tH / 2, 0]}>
+        <mesh>
+          <cylinderGeometry args={[tR, tR, tH, 12]} />
+          <meshStandardMaterial color={WHITE} roughness={0.85} map={brickTexture()} />
+        </mesh>
+        <mesh position={[0, tH / 2 + tConeH / 2 + 0.04, 0]}>
+          <coneGeometry args={[tR * 1.3, tConeH, 12]} />
+          <meshStandardMaterial
+            color={SLATE}
+            map={roofTexture()}
+            roughness={0.6}
+            metalness={0.2}
+          />
+        </mesh>
+      </group>
+
+      <Html position={[0, height + coneH + 0.7, 0]} center zIndexRange={[20, 0]}>
         <button
           type="button"
           onClick={() => select()}

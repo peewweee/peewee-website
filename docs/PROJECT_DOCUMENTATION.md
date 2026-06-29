@@ -7,7 +7,7 @@
 | **Owner**         | Phoebe Rhone Gangoso — graduating BS Computer Engineering, PUP Manila                                                                                                                                            |
 | **Career target** | AI Engineering roles                                                                                                                                                                                             |
 | **Domain**        | To be decided — skipped for now                                                                                                                                                                                  |
-| **Status**        | Design system complete — ready to build                                                                                                                                                                          |
+| **Status**        | Build in progress — Phases 0–2 done (content site + 3D castle); Phase 3 (AI Hat) + Phase 4 (atmosphere) scaffolded as stubs                                                                                                                                                                          |
 | **This document** | The brief for the design phase and the build. Covers concept, audience, sitemap, features, tech stack, architecture, plan, and design direction. A ready-to-paste prompt for the design system is in Appendix A. |
 
 > **Note on the name:** the owner name above is taken from the resume (Phoebe Rhone Gangoso). Swap it everywhere if the site should carry a different name.
@@ -67,6 +67,8 @@ One character, three demos, telling a complete AI-engineering story:
 1. **Ask the Hat (RAG).** Visitors ask about me; the Hat answers **only** from my resume + project write-ups, with source citations (e.g., "from: Aura"). Demonstrates retrieval-augmented generation, grounding, and prompt engineering. _This is the flagship._
 2. **Get Sorted (classification).** The Hat asks a few quick questions (or reads a sentence the visitor types) and sorts them into a Hogwarts house; the site accent then shifts to that house. Demonstrates LLM classification and structured output. Light, fun, shareable.
 3. **Behind the Magic (transparency).** A short, visual "how it works" panel showing the real pipeline (embeddings → vector search → LLM, plus caching and rate-limiting). This is what turns "cute chatbot" into "this person can ship AI."
+
+**One panel, two modes.** All of this lives in a **single Hat panel**. When it opens, the Hat offers two quick-reply chips — _"Ask about Phoebe"_ and _"Sort me into a house"_ — and the visitor can switch anytime; _Behind the Magic_ is a small expandable link in the same panel. The two chat modes route to two different backends (see §6): **Ask → `/api/ask`** (RAG) and **Sort → `/api/sort`** (classification). Intents are explicit chips rather than auto-detected — clearer for the visitor, and each request routes cleanly to the right endpoint.
 
 **Guardrails.** Answers are strictly grounded in my data; the Hat politely refuses off-topic questions; the API key stays server-side; a spend cap + caching + rate-limiting protect the public endpoint.
 
@@ -140,7 +142,7 @@ Everything runs on free tiers. The only possible spend is Gemini once the projec
 
 ---
 
-## 6. Architecture — how the Hat answers
+## 6. Architecture — how the Hat answers & sorts
 
 **Build-time (once):** resume + project notes → chunked & embedded → stored in **Upstash Vector**.
 
@@ -153,6 +155,10 @@ Everything runs on free tiers. The only possible spend is Gemini once the projec
 5. **Gemini Flash-Lite** (via the Vercel AI SDK) composes an answer grounded **only** in the retrieved text.
 6. The answer streams back to the Hat with **source citations**.
 
+**Get Sorted — a separate, simpler path (no retrieval).** House sorting does **not** touch the vector DB. The visitor's quick answers (or a sentence they type) go to **`/api/sort`** — a Vercel serverless route behind the same Upstash rate-limit — where **Gemini Flash-Lite** returns a **structured** result: one of the four houses + a one-line reason. The client then sets `data-house` on a subtree (instant accent/glow swap, no rebuild), persists the choice in `localStorage` so it sticks on return visits, and the 3D castle reads the same per-house glow triplet so the towers recolor too.
+
+_Optional simpler version:_ Get Sorted could instead be a fixed **client-side quiz** (scored multiple-choice → house) with no server, no LLM, and no cost — but then it stops being an AI demo. The plan keeps the LLM version on purpose, as the second AI skill on display.
+
 ---
 
 ## 7. Build plan (phased — each phase ships something usable)
@@ -160,7 +166,7 @@ Everything runs on free tiers. The only possible spend is Gemini once the projec
 0. **Scaffold** — Next.js + TS + Tailwind, theme tokens (house colors), base layout, deploy a "hello world" to Vercel on the domain.
 1. **Content site** — the four project pages, About, resume download, working contact form. _This alone is already a real portfolio._
 2. **3D nav hub** — source + optimize the castle model, build the r3f scene, glowing clickable towers → routes, camera transitions, 2D/mobile fallback + accessible menu.
-3. **The Hat** — ingest content → Upstash Vector; `/api/ask` with retrieval + Gemini + streaming; rate-limit & cache; the Great Hall chat UI with citations; "Behind the Magic"; and "Get Sorted."
+3. **The Hat** — ingest content → Upstash Vector; `/api/ask` with retrieval + Gemini + streaming; rate-limit & cache; the Great Hall chat UI with citations; "Behind the Magic"; and "Get Sorted" via a separate `/api/sort` classifier.
 4. **Atmosphere** — background music (Howler) + wand cursor, both with visible toggles and accessibility support.
 5. **Polish** — accessibility pass, performance budget (Lighthouse), reduced-motion variants, SEO / OG images, analytics.
 
@@ -210,11 +216,13 @@ A fully walkable castle interior; voice for the Hat; mini-games; multiple live e
 
 The visual design system has been generated and lives in this folder as **`Wizarding Design System.html`** — a self-contained, interactive style guide showing the tokens and every component in all its states. The build should treat it as the single source of truth for visual styling and port its tokens directly into the codebase.
 
-**Files in this folder**
+**Files (now organized by the build)**
 
-- `PROJECT_DOCUMENTATION.md` — this document (the build brief).
-- `Wizarding Design System.html` — the interactive design system / style guide.
-- `CLAUDE_CODE_PROMPT.md` — the kickoff prompt for Claude Code.
+- `docs/PROJECT_DOCUMENTATION.md` — this document (the build brief).
+- `docs/Wizarding Design System.html` — the interactive design system / style guide (single source of truth for visual styling).
+- `docs/CLAUDE_CODE_PROMPT.md` — the original Claude Code kickoff prompt.
+- `README.md` (repo root) — the build's own status, folder structure, and run instructions.
+- The Next.js app itself: `app/`, `components/`, `lib/`, `content/`.
 
 ### 11.1 Color tokens (CSS variables)
 

@@ -30,9 +30,6 @@ const BAND = 1; // boundary thickness for the displacement falloff
 const WARP = 0.7; // how non-circular / organic the edge is
 const DISP = 3; // UV displacement strength at the boundary
 
-const COVER_BG =
-  "radial-gradient(circle at 50% 50%, #ffe7a8 0%, #ffcf6b 55%, #f0bd4e 100%)";
-
 const useIso =
   typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
 
@@ -193,14 +190,11 @@ const COMP_FRAG = /* glsl */ `
 
 function IrisPass({
   progressRef,
-  onFirstFrame,
 }: {
   progressRef: React.MutableRefObject<number>;
-  onFirstFrame: () => void;
 }) {
   const { gl, size } = useThree();
   const fbo = useFBO();
-  const firedRef = React.useRef(false);
 
   const fieldMat = React.useMemo(
     () =>
@@ -263,11 +257,6 @@ function IrisPass({
     gl.setRenderTarget(fbo);
     gl.render(fieldScene, fieldCam);
     gl.setRenderTarget(null);
-
-    if (!firedRef.current) {
-      firedRef.current = true;
-      onFirstFrame();
-    }
   });
 
   return (
@@ -305,7 +294,6 @@ class GLBoundary extends React.Component<
 export function PortalTransition() {
   const pathname = usePathname();
   const [mode, setMode] = React.useState<"in" | "close" | null>(null);
-  const [showCover, setShowCover] = React.useState(false);
   const modeRef = React.useRef<"in" | "close" | null>(null);
   const progressRef = React.useRef(0);
   const cancelRef = React.useRef<() => void>(() => {});
@@ -328,11 +316,9 @@ export function PortalTransition() {
     if (flag !== "in") return;
     if (prefersReducedMotion()) return; // instant for reduced-motion
 
-    const fresh = modeRef.current === null; // a close already painting → no cover
     cancelRef.current();
     progressRef.current = 0;
     setBoth("in");
-    if (fresh) setShowCover(true);
     const cancel = tween(
       GROW_MS,
       (t) => {
@@ -365,7 +351,6 @@ export function PortalTransition() {
       }
       cancelRef.current();
       progressRef.current = 1; // start fully open (the page is visible)
-      setShowCover(false);
       setBoth("close");
       const cancel = tween(
         90,
@@ -381,16 +366,8 @@ export function PortalTransition() {
 
   if (!mode) return null;
 
-  const hideCover = () => setShowCover(false);
-
   return (
     <div className="pointer-events-none fixed inset-0 z-[130]" aria-hidden>
-      {/* Warm DOM cover for the first GL frames of a fresh open, so the page
-          never flashes before the shader paints. The close starts transparent
-          and the back trip is already painting, so neither needs it. */}
-      {showCover && (
-        <div className="absolute inset-0" style={{ background: COVER_BG }} />
-      )}
       <GLBoundary onFail={() => setBoth(null)}>
         <Canvas
           className="absolute inset-0"
@@ -399,7 +376,7 @@ export function PortalTransition() {
           gl={{ alpha: true, premultipliedAlpha: false, antialias: true }}
           onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}
         >
-          <IrisPass progressRef={progressRef} onFirstFrame={hideCover} />
+          <IrisPass progressRef={progressRef} />
         </Canvas>
       </GLBoundary>
     </div>
