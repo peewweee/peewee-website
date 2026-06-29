@@ -9,7 +9,7 @@ import {
   invalidate,
   type ThreeEvent,
 } from "@react-three/fiber";
-import { Html, Stars, useCursor } from "@react-three/drei";
+import { Html, OrbitControls, Stars, useCursor } from "@react-three/drei";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 
 import type { NavItem } from "@/lib/types";
@@ -17,6 +17,11 @@ import { readCastleTheme, type CastleTheme } from "@/lib/tokens";
 import { useEnterReveal } from "@/components/page-reveal";
 
 type Vec3 = [number, number, number];
+
+// Dev-only: free drag-to-orbit camera for inspecting the scene. Currently OFF so
+// the normal cinematic camera + window transitions run. To re-enable inspection,
+// set this back to: process.env.NODE_ENV !== "production".
+const DEV_ORBIT = false;
 
 /* ----------------------------------------------------------------------------
    Palette
@@ -64,7 +69,7 @@ const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; win: Vec3; cam: Vec3 }> = {
   // `cam` is slightly NEGATIVE: the camera flies just PAST the middle of the
   // window (a hair inside, where the yellow interior fills the view) — not all the
   // way into the tower.
-  "/great-hall": { c: [-6.6, LEFT_TOP, 0.3], win: [0, 1.4, 3.41], cam: [0, 0.1, 0.14] },
+  "/great-hall": { c: [-7, LEFT_TOP, -2], win: [0.2, 1.4, 3.37], cam: [0, 0.1, 0.16] },
   // Towers — a mid window on the front face (y = height*0.5, z = radius*0.92).
   "/projects": { c: [-4.5, LEFT_TOP, -0.3], win: [0, 1.97, 0.5], cam: [0, 0, 1.08] },
   "/about": { c: [5.6, RIGHT_TOP, 1.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.14] },
@@ -91,7 +96,7 @@ function enterPose(href: string, center: THREE.Vector3) {
 const WIDE_POS = new THREE.Vector3(-14, 2.3, 20);
 const WIDE_LOOK = new THREE.Vector3(1, 4, -2);
 // The scroll "dive" flies into the Great Hall's window (left).
-const GREAT_HALL_ENTER = enterPose("/great-hall", new THREE.Vector3(-6.6, LEFT_TOP, 0.3));
+const GREAT_HALL_ENTER = enterPose("/great-hall", new THREE.Vector3(-7, LEFT_TOP, -2));
 const DIVE_POS = GREAT_HALL_ENTER.pos;
 const DIVE_LOOK = GREAT_HALL_ENTER.look;
 
@@ -124,10 +129,14 @@ function makeArchWall(spanCount: number, archW: number, pierW: number, wallH: nu
   return { shape, totalW };
 }
 
-const BRIDGE_DEPTH = 0.8;
-const BRIDGE_BOTTOM = -3.0;
-const LOWER_TIER = makeArchWall(5, 0.95, 0.42, 2.1); // five tall open arches
-const UPPER_TIER = makeArchWall(10, 0.42, 0.22, 0.9);
+const BRIDGE_DEPTH = 0.4;
+const BRIDGE_BOTTOM = -3.4;
+// Bridge height = LOWER_TIER_H + UPPER_TIER_H. These drive the arch geometry AND
+// the stacking of the upper tier / deck / deck-towers, so the bridge stays solid.
+const LOWER_TIER_H = 2.5; // tall lower arch tier
+const UPPER_TIER_H = 0.9; // short upper arch tier
+const LOWER_TIER = makeArchWall(14, 0.45, 0.42, LOWER_TIER_H);
+const UPPER_TIER = makeArchWall(20, 0.3, 0.22, UPPER_TIER_H);
 const EXTRUDE = { depth: BRIDGE_DEPTH, bevelEnabled: false } as const;
 
 /* ----------------------------------------------------------------------------
@@ -282,6 +291,7 @@ function DecoTower({
   windows = 0,
   band = false,
   registerWindow,
+  rotation = [0, 0, 0] as Vec3,
 }: {
   position: Vec3;
   radius: number;
@@ -292,10 +302,11 @@ function DecoTower({
   windows?: number;
   band?: boolean;
   registerWindow?: (m: THREE.MeshStandardMaterial | null) => void;
+  rotation?: Vec3; // tilt from the base; e.g. [0,0,0.2] leans it sideways
 }) {
   const coneH = radius * 2.6;
   return (
-    <group position={position}>
+    <group position={position} rotation={rotation}>
       <mesh position={[0, height / 2, 0]}>
         <cylinderGeometry args={[radius * 0.9, radius, height, 14]} />
         <meshStandardMaterial color={body} roughness={0.85} map={brickTexture()} />
@@ -522,21 +533,22 @@ function LeftCliff() {
   return (
     <group>
       {/* widened so the rock reaches under the courtyard, out toward the viaduct */}
-      <Plateau cx={-5} cz={-0.4} top={LEFT_TOP} rTop={2.2} rBot={5.2} color={ROCK} />
-      {/* broad rock under the Great Hall so its (slanted) floor never floats */}
-      <Plateau cx={-7.2} cz={0.3} top={LEFT_TOP} rTop={3.6} rBot={4.7} color={ROCK} />
+      <Plateau cx={-6.2} cz={2.5} top={LEFT_TOP} rTop={2} rBot={5.2} color={ROCK} />
+      {/* broad rock under the Great Hall so its (slanted) floor never floats —
+          centered on the moved hall, wide enough to reach the slanted back end */}
+      <Plateau cx={-7.4} cz={-2.0} top={LEFT_TOP} rTop={3.9} rBot={6} color={ROCK} />
       {/* craggy accents on the flanks */}
       <Rock position={[-7.6, -1.4, -0.2]} scale={[1.7, 2.8, 1.7]} color={ROCK_DK} />
-      <Rock position={[-2.4, -1.6, 0.6]} scale={[1.4, 2.6, 1.4]} color={ROCK_LT} />
+      <Rock position={[-4.2, -1.5, -0.4]} scale={[3, 2.6, 3]} color={ROCK_LT} />
       {/* tall jagged peaks rising behind the buildings */}
       <Rock position={[-6.6, 0.6, -2.8]} scale={[1.5, 2.8, 1.4]} color={ROCK_DK} />
       <Rock position={[-4.4, 0.3, -3.2]} scale={[1.3, 2.4, 1.3]} color={ROCK} />
       {/* long descending ridge to the SW (camera POV) — rounded boulders,
           stepping down to the water */}
-      <Rock position={[-6.4, -5.07, 6]} scale={[3.0, 6, 2]} color={ROCK} detail={2} />
-      <Rock position={[-8, -1.8, 5.7]} scale={[2, 2.7, 2.2]} color={ROCK_DK} detail={2} />
-      <Rock position={[-8.0, -3, 7.3]} scale={[1.9, 2.8, 2.0]} color={ROCK} detail={2} />
-      <Rock position={[-7.5, -3.8, 9.2]} scale={[1.6, 2.6, 1.8]} color={ROCK_DK} detail={2} />
+      <Rock position={[-5, -5.07, 4]} scale={[3.0, 6, 3]} color={ROCK} detail={2} />
+      <Rock position={[-6.3, -2.3, 4]} scale={[2.3, 3.1, 3.4]} color={ROCK_DK} detail={2} />
+      <Rock position={[-7.5, -3, 5.7]} scale={[1.9, 2.8, 2.0]} color={ROCK} detail={2} />
+      <Rock position={[-7.5, -3.8, 7]} scale={[1.6, 2.6, 1.8]} color={ROCK_DK} detail={2} />
     </group>
   );
 }
@@ -563,6 +575,7 @@ function DeckWing({
   height,
   depth = 1.3,
   z = 0,
+  rotation = [0, 0, 0] as Vec3,
 }: {
   x: number;
   deckTop: number;
@@ -570,6 +583,7 @@ function DeckWing({
   height: number;
   depth?: number;
   z?: number;
+  rotation?: Vec3; // tilt from the base; z-rotation leans it left/right
 }) {
   const winCount = Math.max(2, Math.round(width / 0.95));
   const rise = depth * 0.6;
@@ -577,7 +591,7 @@ function DeckWing({
   const slope = Math.sqrt(hd * hd + rise * rise);
   const ang = Math.atan2(rise, hd);
   return (
-    <group position={[x, deckTop, z]}>
+    <group position={[x, deckTop, z]} rotation={rotation}>
       <mesh position={[0, height / 2, 0]}>
         <boxGeometry args={[width, height, depth]} />
         <meshStandardMaterial color={WHITE} roughness={0.85} map={brickTexture()} />
@@ -614,19 +628,19 @@ function Viaduct({ position = [0, 0, 0] as Vec3 }: { position?: Vec3 }) {
         <extrudeGeometry args={[LOWER_TIER.shape, EXTRUDE]} />
         <meshStandardMaterial color={BRIDGE} roughness={0.9} flatShading />
       </mesh>
-      <mesh position={[-UPPER_TIER.totalW / 2, BRIDGE_BOTTOM + 2.1, -BRIDGE_DEPTH / 2]}>
+      <mesh position={[-UPPER_TIER.totalW / 2, BRIDGE_BOTTOM + LOWER_TIER_H, -BRIDGE_DEPTH / 2]}>
         <extrudeGeometry args={[UPPER_TIER.shape, EXTRUDE]} />
         <meshStandardMaterial color={BRIDGE} roughness={0.9} flatShading />
       </mesh>
-      <mesh position={[0, BRIDGE_BOTTOM + 2.1 + 0.9 + 0.09, 0]}>
+      <mesh position={[0, BRIDGE_BOTTOM + LOWER_TIER_H + UPPER_TIER_H + 0.09, 0]}>
         <boxGeometry args={[LOWER_TIER.totalW + 0.4, 0.18, BRIDGE_DEPTH + 0.25]} />
         <meshStandardMaterial color={BRIDGE} roughness={0.85} map={roofTexture()} />
       </mesh>
 
       {/* Dark recessed wall just behind the arches so the openings read as deep,
           shadowed holes instead of see-through gaps. */}
-      <mesh position={[0, BRIDGE_BOTTOM + 1.5, -BRIDGE_DEPTH / 2 - 0.06]}>
-        <boxGeometry args={[LOWER_TIER.totalW, 3.0, 0.08]} />
+      <mesh position={[0, BRIDGE_BOTTOM + (LOWER_TIER_H + UPPER_TIER_H) / 2, -BRIDGE_DEPTH / 2 - 0.06]}>
+        <boxGeometry args={[LOWER_TIER.totalW, LOWER_TIER_H + UPPER_TIER_H, 0.08]} />
         <meshStandardMaterial color="#0a0c14" roughness={1} />
       </mesh>
 
@@ -880,28 +894,31 @@ function SceneContents({
       <Water />
       <LeftCliff />
       <RightCliff />
-      <Viaduct position={[0, 0, 2.3]} />
+      <Viaduct position={[0, 0, 2.5]} />
       {/* The two rectangular deck towers — standalone (NOT children of the bridge,
           so moving the bridge never drags them), set back toward the castle. */}
-      <DeckWing x={-1.65} z={0.1} deckTop={BRIDGE_BOTTOM + 2.1 + 0.9 + 0.18} width={3.7} height={2.2} />
-      <DeckWing x={2} z={0} deckTop={BRIDGE_BOTTOM + 2.1 + 0.9 + 0.18} width={3.5} height={1.5} />
+      <DeckWing x={-1.65} z={-0.5} rotation={[0, 0.2, 0]} deckTop={BRIDGE_BOTTOM + LOWER_TIER_H + UPPER_TIER_H + 0.18} width={3.7} height={2.2} />
+      <DeckWing x={2} z={-0.45} rotation={[0, -0.3, 0]} deckTop={BRIDGE_BOTTOM + LOWER_TIER_H + UPPER_TIER_H + 0.18} width={3.5} height={1.5} />
       {/* Rock beneath those towers so they don't float. */}
-      <Rock position={[0, -1.5, -0.2]} scale={[4.4, 3.0, 1.3]} color={ROCK} />
+      <Rock position={[-0.55, -1.68, -0.5]} scale={[7, 2.0, 2]} color={ROCK} />
 
       <CameraRig flyRef={flyRef} descendRef={descendRef} />
+      {DEV_ORBIT && (
+        <OrbitControls makeDefault enableDamping={false} target={[0, 1.5, 0]} />
+      )}
       <CastleBackdrop />
 
       {/* Great Hall = an interactive BUILDING (home), far left */}
       {items[0] && (
         <GreatHallBuilding
           item={items[0]}
-          position={[-6.6, LEFT_TOP, 0.3]}
+          position={[-7, LEFT_TOP, -2]}
           onSelect={handleSelect}
         />
       )}
 
       {/* Courtyard between the Great Hall complex and the start of the viaduct */}
-      <Courtyard position={[-6.8, LEFT_TOP, 4.3]} />
+      <Courtyard position={[-6.5, LEFT_TOP, 2]} rotation={[0, 0.3, 0]} />
 
       {/* The cylindrical nav towers (Projects / About / Resume) */}
       {navTowers.map((item, i) => (
@@ -1107,6 +1124,7 @@ function GreatHallBuilding({
         crenel
         windows={2}
         registerWindow={registerWindow}
+        rotation={[0, 0.4, 0]}
       />
 
       <Html position={[0, height + rh + 1.4, depth / 2]} center zIndexRange={[20, 0]}>
@@ -1136,10 +1154,12 @@ function GreatHallBuilding({
    ============================================================================ */
 function Courtyard({
   position,
-  w = 2.0,
-  d = 3.6,
+  rotation = [0, 0, 0] as Vec3,
+  w = 2.5,
+  d = 4.2,
 }: {
   position: Vec3;
+  rotation?: Vec3;
   w?: number;
   d?: number;
 }) {
@@ -1153,7 +1173,7 @@ function Courtyard({
     </mesh>
   );
   const pillars: React.ReactNode[] = [];
-  const nz = 12;
+  const nz = 14;
   const nx = 10;
   for (let i = 0; i < nz; i++) {
     const z = -hd + (d / (nz - 1)) * i;
@@ -1164,11 +1184,11 @@ function Courtyard({
     pillars.push(pillar(x, -hd, `b${i}`), pillar(x, hd, `f${i}`));
   }
   return (
-    <group position={position}>
+    <group position={position} rotation={rotation}>
       {/* flat quadrangle floor */}
       <mesh position={[0, 0.03, 0]}>
         <boxGeometry args={[w, 0.06, d]} />
-        <meshStandardMaterial color={WHITE_DK} roughness={0.95} map={rockTexture()} />
+        <meshStandardMaterial color={WHITE} roughness={0.95} map={rockTexture()} />
       </mesh>
       {/* cloister colonnade — rows of small open bays framing the quad */}
       {pillars}
@@ -1221,6 +1241,7 @@ function CameraRig({
   }, [gl]);
 
   useFrame((state) => {
+    if (DEV_ORBIT) return; // dev: OrbitControls drives the camera instead
     const cam = state.camera;
     let moving = false;
     const fly = flyRef.current;
