@@ -50,14 +50,16 @@ const RIGHT_TOP = 0.2;
    building, handled separately; Contact lives in the header nav. Each tower
    sits on its plateau top. */
 const TOWERS: {
+  href: string; // which nav route/item this physical tower represents
   position: Vec3;
   height: number;
   radius: number;
   windows?: number[]; // window heights as fractions of `height`; omit = default 4, [] = none
+  extendIntoCone?: boolean; // push the body cylinder up into the cone so there's no gap at the eaves
 }[] = [
-  { position: [-4.5, LEFT_TOP, -0.3], height: 5.8, radius: 1.5 }, // Projects — Main Astronomy Tower (tallest, thickest)
-  { position: [5.6, RIGHT_TOP, 1], height: 3.4, radius: 0.8 }, // About — Main Right Tower (forward, by the viaduct end)
-  { position: [2.4, RIGHT_TOP, 0.7], height: 4.7, radius: 0.62 }, // Resume — Castellated Bridge Tower
+  { href: "/sorting-hat", position: [-4.5, LEFT_TOP, -0.3], height: 5.8, radius: 1.5 }, // Ask the Sorting Hat — Main Astronomy Tower (tallest, thickest)
+  { href: "/about", position: [5.6, RIGHT_TOP, 1], height: 3.4, radius: 0.8, extendIntoCone: true }, // Potions — Main Right Tower (forward, by the viaduct end)
+  { href: "/projects", position: [2.4, RIGHT_TOP, 0.7], height: 4.7, radius: 0.62, extendIntoCone: true }, // Library — Castellated Bridge Tower
 ];
 
 // Route → its structure. `win` = offset (from the plateau-base center `c`) of an
@@ -71,9 +73,10 @@ const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; win: Vec3; cam: Vec3 }> = {
   // way into the tower.
   "/great-hall": { c: [-7, LEFT_TOP, -2], win: [0.2, 1.4, 3.37], cam: [0, 0.1, 0.16] },
   // Towers — a mid window on the front face (y = height*0.5, z = radius*0.92).
-  "/projects": { c: [-4.5, LEFT_TOP, -0.3], win: [0, 1.97, 0.5], cam: [0, 0, 1.08] },
+  // Ask the Sorting Hat = the big tower at [-4.5]; Library = the tower at [2.4].
+  "/sorting-hat": { c: [-4.5, LEFT_TOP, -0.3], win: [0, 4.8, 0.5], cam: [0, 0, 1.08] },
   "/about": { c: [5.6, RIGHT_TOP, 1.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.14] },
-  "/resume": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 3.9, 0.57], cam: [0, 0, 0.14] },
+  "/projects": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 3.9, 0.57], cam: [0, 0, 0.14] },
   // Owlery — a tall slim tower behind/left of About; single window high under the roof.
   "/contact": { c: [5.0, RIGHT_TOP, -0.5], win: [0, 5.87, 0.47], cam: [0, 0, 0.14] },
 };
@@ -95,13 +98,67 @@ function enterPose(href: string, center: THREE.Vector3) {
 // Camera: low, three-quarter front-LEFT (left close & prominent, right recedes).
 const WIDE_POS = new THREE.Vector3(-14, 2.3, 20);
 const WIDE_LOOK = new THREE.Vector3(1, 4, -2);
-// The scroll "dive" flies into the Great Hall's window (left).
-const GREAT_HALL_ENTER = enterPose("/great-hall", new THREE.Vector3(-7, LEFT_TOP, -2));
-const DIVE_POS = GREAT_HALL_ENTER.pos;
-const DIVE_LOOK = GREAT_HALL_ENTER.look;
+/** A camera pose framing a structure head-on from the front (+z), full height.
+ *  cx/cy/cz = its base center, h = its height, dist = how far in front to stand. */
+function frontPose(cx: number, cy: number, cz: number, h: number, dist: number) {
+  return {
+    pos: new THREE.Vector3(cx, cy + h * 0.55, cz + dist),
+    look: new THREE.Vector3(cx, cy + h * 0.5, cz),
+  };
+}
+
+// Scroll TOUR — scrolling steps the camera through these poses in order. For each
+// tower there's a close "zoom IN" pose then a slightly pulled-back "out a little"
+// pose, then it moves on; it ends back at the original wide POV. Per tower, the
+// smaller `dist` = the zoom-in, the larger `dist` = the pull-back (tweak these).
+const TOUR: { pos: THREE.Vector3; look: THREE.Vector3 }[] = [
+  { pos: WIDE_POS.clone(), look: WIDE_LOOK.clone() }, // original POV (start)
+  frontPose(-6, LEFT_TOP, 0.5, 3, 5.2), // Great Hall — zoom in
+  frontPose(-4, LEFT_TOP, 11, 8, 5.2), // Great Hall — out a little
+  frontPose(-4.5, LEFT_TOP, 1, 10, 4.2), // Projects — zoom in
+  frontPose(0, LEFT_TOP, 11, 7, 5.2), // Projects — out a little
+  frontPose(2.4, RIGHT_TOP, 0.5, 8, 4.2), // Resume — zoom in
+  frontPose(2.4, RIGHT_TOP, 11, 9, 5.2), // Resume — out a little
+  frontPose(5.0, RIGHT_TOP, 0.5, 11.5, 3.2), // Contact — zoom in
+  frontPose(5.0, RIGHT_TOP, 8, 6.9, 8.0), // Contact — out a little
+  frontPose(5.6, RIGHT_TOP, 1, 3.4, 2.8), // About — zoom in
+  { pos: WIDE_POS.clone(), look: WIDE_LOOK.clone() }, // back to original POV
+];
+
+// Which TOUR stop frames each route head-on (its "zoom-in" pose). Returning from
+// a content page rests the camera here instead of the wide overview, and the
+// scroll tour resumes from this stop. Keep the indices in sync with TOUR above.
+const TOUR_STOP_BY_ROUTE: Record<string, number> = {
+  "/great-hall": 1,
+  "/sorting-hat": 3, // big tower at [-4.5]
+  "/projects": 5, // Library tower at [2.4]
+  "/contact": 7,
+  "/about": 9,
+};
 
 const clamp01 = (n: number) => Math.min(Math.max(n, 0), 1);
 const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+// Soft window "breathing" while the camera rests at a structure's front pose.
+const PULSE_W = 3.4; // angular speed (rad/s) → ~1.85s period
+const PULSE_MIN = 1.4; // dimmest emissive at the trough
+const PULSE_MAX = 4.0; // brightest emissive at the peak
+const FRONT_POSE_RANGE = 0.06; // how near descend must sit to the stop to pulse
+/** 1 when the scroll tour rests exactly on this route's front pose, 0 when far. */
+function frontPoseNearness(href: string, d: number): number {
+  const stop = TOUR_STOP_BY_ROUTE[href];
+  if (stop == null) return 0;
+  const frac = stop / (TOUR.length - 1);
+  let dist = Math.abs(d - frac);
+  dist = Math.min(dist, 1 - dist); // the tour loops → circular distance
+  return Math.max(0, 1 - dist / FRONT_POSE_RANGE);
+}
+/** Target window emissive: a soft breathing pulse at the front pose, else `base`. */
+function frontPosePulse(near: number, base: number): number {
+  if (near <= 0) return base;
+  const phase = 0.5 + 0.5 * Math.sin((performance.now() / 1000) * PULSE_W);
+  return Math.max(base, PULSE_MIN + near * (PULSE_MAX - PULSE_MIN) * phase);
+}
 
 /* ----------------------------------------------------------------------------
    Viaduct arch-wall shape (real openings via ExtrudeGeometry holes).
@@ -395,6 +452,7 @@ function GableHall({
   ridgeSpireCount = 4,
   steep = 0.5,
   coverFront = false,
+  coverBack = false,
   bothSides = false,
   registerWindow,
 }: {
@@ -409,6 +467,7 @@ function GableHall({
   ridgeSpireCount?: number;
   steep?: number;
   coverFront?: boolean;
+  coverBack?: boolean;
   bothSides?: boolean;
   registerWindow?: (m: THREE.MeshStandardMaterial | null) => void;
 }) {
@@ -441,6 +500,18 @@ function GableHall({
       {/* solid triangular wall closing the front gable */}
       {coverFront && (
         <mesh position={[0, height, depth / 2 + 0.07]}>
+          <shapeGeometry args={[gable]} />
+          <meshStandardMaterial
+            color={body}
+            roughness={0.85}
+            side={THREE.DoubleSide}
+            map={brickTexture()}
+          />
+        </mesh>
+      )}
+      {/* solid triangular wall closing the back gable */}
+      {coverBack && (
+        <mesh position={[0, height, -depth / 2 - 0.07]}>
           <shapeGeometry args={[gable]} />
           <meshStandardMaterial
             color={body}
@@ -557,8 +628,8 @@ function LeftCliff() {
 function RightCliff() {
   return (
     <group>
-      <Plateau cx={5.6} cz={-0.4} top={RIGHT_TOP} rTop={4.0} rBot={4.9} color={ROCK} />
-      <Rock position={[8.8, -1.6, -0.2]} scale={[1.6, 2.4, 1.6]} color={ROCK_DK} />
+      <Plateau cx={5.6} cz={-0.4} top={RIGHT_TOP} rTop={4.0} rBot={6} color={ROCK} />
+      <Rock position={[8.8, -3.4, -0.2]} scale={[3.5, 4, 2]} color={ROCK_DK} />
       <Rock position={[2.6, -1.7, 0.6]} scale={[1.3, 2.2, 1.3]} color={ROCK_LT} />
       <Rock position={[6.4, -0.7, -2.6]} scale={[1.5, 1.9, 1.4]} color={ROCK_DK} />
     </group>
@@ -590,6 +661,16 @@ function DeckWing({
   const hd = depth / 2;
   const slope = Math.sqrt(hd * hd + rise * rise);
   const ang = Math.atan2(rise, hd);
+  // Triangle closing the gable ends (in the z-y plane): base spans the depth,
+  // peak rises to the ridge. Faces ±X once rotated 90° about Y.
+  const gableEnd = React.useMemo(() => {
+    const sp = new THREE.Shape();
+    sp.moveTo(-hd, 0);
+    sp.lineTo(hd, 0);
+    sp.lineTo(0, rise);
+    sp.closePath();
+    return sp;
+  }, [hd, rise]);
   return (
     <group position={[x, deckTop, z]} rotation={rotation}>
       <mesh position={[0, height / 2, 0]}>
@@ -605,6 +686,22 @@ function DeckWing({
         <boxGeometry args={[width + 0.12, 0.14, slope + 0.06]} />
         <meshStandardMaterial color={SLATE} roughness={0.7} map={roofTexture()} />
       </mesh>
+      {/* solid triangular walls closing both gable ends (±X) */}
+      {[-1, 1].map((s) => (
+        <mesh
+          key={s}
+          position={[(s * width) / 2, height, 0]}
+          rotation={[0, Math.PI / 2, 0]}
+        >
+          <shapeGeometry args={[gableEnd]} />
+          <meshStandardMaterial
+            color={WHITE}
+            roughness={0.85}
+            side={THREE.DoubleSide}
+            map={brickTexture()}
+          />
+        </mesh>
+      ))}
       {/* glowing window row on the front face */}
       {Array.from({ length: winCount }).map((_, i) => {
         const wx = -width / 2 + (width / (winCount + 1)) * (i + 1);
@@ -792,7 +889,7 @@ function SceneContents({
       if (navigatedRef.current) return;
       navigatedRef.current = true;
       const enter = enterPose(item.href, pos);
-      const DURATION = 1900;
+      const DURATION = 1000;
       flyRef.current = {
         fromPos: new THREE.Vector3(),
         fromLook: new THREE.Vector3(),
@@ -810,7 +907,11 @@ function SceneContents({
   );
 
   // "Back to castle" intro: if we arrived from a content page (wiz:from), start
-  // the camera zoomed in on that page's structure, then pull out to the wide view.
+  // the camera zoomed in on that page's structure (inside its window) and settle
+  // at that tower's head-on front pose — the same spot the scroll tour frames it.
+  // We also seed descendRef to that tour stop so the idle tour HOLDS there (rather
+  // than dragging the camera back to the wide view) and so scrolling resumes from
+  // this tower instead of snapping.
   React.useEffect(() => {
     let from: string | null = null;
     try {
@@ -822,24 +923,28 @@ function SceneContents({
     const s = from ? STRUCTURE_BY_ROUTE[from] : undefined;
     if (!s) return;
     const enter = enterPose(from!, new THREE.Vector3(s.c[0], s.c[1], s.c[2]));
-    const HOLD = 250; // brief beat inside the window, then pull out
-    const ZOOMOUT = 1700;
+    const stop = TOUR_STOP_BY_ROUTE[from!] ?? TOUR.length - 1;
+    const rest = TOUR[stop];
+    descendRef.current = stop / (TOUR.length - 1);
+    const HOLD = 150; // brief beat inside the window, then ease out to the front pose
+    const SETTLE = 700;
     flyRef.current = {
       fromPos: enter.pos,
       fromLook: enter.look,
-      toPos: WIDE_POS.clone(),
-      toLook: WIDE_LOOK.clone(),
-      durationMs: ZOOMOUT,
+      toPos: rest.pos.clone(),
+      toLook: rest.look.clone(),
+      durationMs: SETTLE,
       holdMs: HOLD,
       startWall: performance.now(),
       captured: true, // intro uses its preset (zoomed-in) pose
       intro: true,
     };
-    // Keep frames flowing through the hold + pull-out, then release to idle.
-    drive(HOLD + ZOOMOUT, undefined, () => {
+    // Keep frames flowing through the hold + settle, then release to the idle tour
+    // (which now holds this stop because descendRef points at it).
+    drive(HOLD + SETTLE, undefined, () => {
       flyRef.current = null;
     });
-  }, [drive]);
+  }, [drive, descendRef]);
 
   // Demand mode: render a few frames after mount so the scene paints once the
   // canvas has sized, even with no pointer/scroll interaction yet.
@@ -851,7 +956,11 @@ function SceneContents({
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  const navTowers = items.slice(1, 1 + TOWERS.length);
+  // Each physical structure picks its nav item by route, so the navItems array
+  // order (the header nav order) stays independent of the castle layout.
+  const byHref = (href: string) => items.find((it) => it.href === href);
+  const greatHall = byHref("/great-hall");
+  const owlery = byHref("/contact");
 
   return (
     <>
@@ -909,10 +1018,11 @@ function SceneContents({
       <CastleBackdrop />
 
       {/* Great Hall = an interactive BUILDING (home), far left */}
-      {items[0] && (
+      {greatHall && (
         <GreatHallBuilding
-          item={items[0]}
+          item={greatHall}
           position={[-7, LEFT_TOP, -2]}
+          descendRef={descendRef}
           onSelect={handleSelect}
         />
       )}
@@ -920,25 +1030,31 @@ function SceneContents({
       {/* Courtyard between the Great Hall complex and the start of the viaduct */}
       <Courtyard position={[-6.5, LEFT_TOP, 2]} rotation={[0, 0.3, 0]} />
 
-      {/* The cylindrical nav towers (Projects / About / Resume) */}
-      {navTowers.map((item, i) => (
-        <Tower
-          key={item.href}
-          item={item}
-          theme={theme}
-          position={TOWERS[i].position}
-          height={TOWERS[i].height}
-          radius={TOWERS[i].radius}
-          winFs={TOWERS[i].windows}
-          onSelect={handleSelect}
-        />
-      ))}
+      {/* The cylindrical nav towers (Ask the Sorting Hat / Potions / Library) */}
+      {TOWERS.map((t) => {
+        const item = byHref(t.href);
+        return item ? (
+          <Tower
+            key={t.href}
+            item={item}
+            theme={theme}
+            position={t.position}
+            height={t.height}
+            radius={t.radius}
+            winFs={t.windows}
+            extendIntoCone={t.extendIntoCone}
+            descendRef={descendRef}
+            onSelect={handleSelect}
+          />
+        ) : null;
+      })}
 
       {/* The Owlery (Contact) — a tall slim tower behind About */}
-      {items[4] && (
+      {owlery && (
         <Owlery
-          item={items[4]}
+          item={owlery}
           position={[5.0, RIGHT_TOP, -0.4]}
+          descendRef={descendRef}
           onSelect={handleSelect}
         />
       )}
@@ -1011,6 +1127,8 @@ function CastleBackdrop() {
         windows={4}
         ridgeSpireCount={3}
         steep={0.5}
+        coverFront
+        coverBack
       />
       <GableHall
         position={[8.7, RIGHT_TOP, -0.5]}
@@ -1021,6 +1139,8 @@ function CastleBackdrop() {
         windows={3}
         ridgeSpireCount={2}
         steep={0.5}
+        coverFront
+        coverBack
       />
 
       {/* Structure 11: Far-right square turret with a pyramidal cap */}
@@ -1047,10 +1167,12 @@ function CastleBackdrop() {
 function GreatHallBuilding({
   item,
   position,
+  descendRef,
   onSelect,
 }: {
   item: NavItem;
   position: Vec3;
+  descendRef: React.MutableRefObject<number>;
   onSelect: (item: NavItem, pos: THREE.Vector3) => void;
 }) {
   const [hovered, setHovered] = React.useState(false);
@@ -1065,14 +1187,16 @@ function GreatHallBuilding({
     if (m && !winRefs.current.includes(m)) winRefs.current.push(m);
   }, []);
   useFrame(() => {
-    const target = hovered ? 2.6 : 1.4;
+    const near = frontPoseNearness(item.href, descendRef.current);
+    const target = frontPosePulse(near, hovered ? 3.4 : 1.4);
     let moving = false;
     for (const m of winRefs.current) {
       if (!m) continue;
       const d = target - m.emissiveIntensity;
-      m.emissiveIntensity += d * 0.15;
+      m.emissiveIntensity += d * 0.2;
       if (Math.abs(d) > 0.01) moving = true;
     }
+    if (near > 0) moving = true; // keep the pulse animating in demand mode
     if (moving) invalidate();
   });
 
@@ -1080,6 +1204,16 @@ function GreatHallBuilding({
   const depth = 5.6;
   const height = 2.5;
   const rh = width * 0.75;
+
+  // Label beside the window the camera flies into, on its left (camera POV).
+  const entry = STRUCTURE_BY_ROUTE[item.href];
+  const labelPos: Vec3 = entry
+    ? [
+        entry.c[0] + entry.win[0] - position[0] - 1.2,
+        entry.c[1] + entry.win[1] - position[1] + 0.6,
+        entry.c[2] + entry.win[2] - position[2] + 0.2,
+      ]
+    : [-1.6, height * 0.8, depth / 2 + 0.2];
 
   return (
     <group
@@ -1127,21 +1261,18 @@ function GreatHallBuilding({
         rotation={[0, 0.4, 0]}
       />
 
-      <Html position={[0, height + rh + 1.4, depth / 2]} center zIndexRange={[20, 0]}>
+      <Html position={labelPos} center distanceFactor={22} zIndexRange={[20, 0]}>
         <button
           type="button"
           onClick={() =>
             onSelect(item, new THREE.Vector3(position[0], position[1], position[2]))
           }
           aria-label="Enter the Great Hall"
-          className={`pointer-events-auto flex items-center gap-1.5 whitespace-nowrap rounded-pill border bg-[rgba(11,16,38,0.82)] px-3 py-1.5 text-xs font-semibold text-accent-text shadow-glow-sm backdrop-blur transition-all hover:border-accent hover:shadow-glow focus-visible:shadow-focus focus-visible:outline-none ${
-            hovered
-              ? "border-accent shadow-glow"
-              : "border-[rgba(var(--accent-glow),0.5)]"
+          className={`pointer-events-auto whitespace-nowrap text-xs font-semibold [text-shadow:0_1px_10px_rgba(0,0,0,0.95)] transition-colors focus-visible:outline-none ${
+            hovered ? "text-foreground" : "text-accent-text"
           }`}
         >
-          <span aria-hidden>{item.glyph}</span>
-          {item.label}
+          {item.tower}
         </button>
       </Html>
     </group>
@@ -1263,14 +1394,22 @@ function CameraRig({
       look.current.lerpVectors(fly.fromLook, fly.toLook, e);
       moving = true;
     } else {
+      // Scroll TOUR: map scroll (descendRef 0→1) across the TOUR poses. Each
+      // segment eases in/out, so the camera settles on a pose (zoom-in or the
+      // pull-back) before flowing to the next.
       const d = clamp01(descendRef.current);
-      const e = easeInOut(d);
-      desiredPos.current.lerpVectors(WIDE_POS, DIVE_POS, e);
-      desiredPos.current.x += pointer.current.x * 1.4 * (1 - d);
-      desiredPos.current.y += pointer.current.y * 0.5 * (1 - d);
-      desiredLook.current.lerpVectors(WIDE_LOOK, DIVE_LOOK, e);
-      cam.position.lerp(desiredPos.current, 0.12);
-      look.current.lerp(desiredLook.current, 0.12);
+      const N = TOUR.length;
+      const p = d * (N - 1);
+      const i = Math.min(Math.floor(p), N - 2);
+      const t = easeInOut(p - i);
+      desiredPos.current.lerpVectors(TOUR[i].pos, TOUR[i + 1].pos, t);
+      desiredLook.current.lerpVectors(TOUR[i].look, TOUR[i + 1].look, t);
+      // gentle pointer parallax, only on the opening wide shot (fades by stop 1)
+      const par = Math.max(0, 1 - p);
+      desiredPos.current.x += pointer.current.x * 1.2 * par;
+      desiredPos.current.y += pointer.current.y * 0.4 * par;
+      cam.position.lerp(desiredPos.current, 0.2);
+      look.current.lerp(desiredLook.current, 0.2);
       if (cam.position.distanceTo(desiredPos.current) > 0.005) moving = true;
     }
 
@@ -1291,7 +1430,9 @@ function Tower({
   radius,
   theme,
   onSelect,
+  descendRef,
   winFs = [0.34, 0.5, 0.66, 0.82],
+  extendIntoCone = false,
 }: {
   item: NavItem;
   position: Vec3;
@@ -1299,8 +1440,12 @@ function Tower({
   radius: number;
   theme: CastleTheme;
   onSelect: (item: NavItem, pos: THREE.Vector3) => void;
+  /** Scroll-tour progress [0,1); used to pulse windows at this tower's front pose. */
+  descendRef: React.MutableRefObject<number>;
   /** Window heights as fractions of the tower height. [] = no windows. */
   winFs?: number[];
+  /** Push the body cylinder up into the cone so no gap shows at the eaves. */
+  extendIntoCone?: boolean;
 }) {
   const [hovered, setHovered] = React.useState(false);
   useCursor(hovered);
@@ -1308,6 +1453,8 @@ function Tower({
   const roofRef = React.useRef<THREE.MeshStandardMaterial>(null);
   const winRefs = React.useRef<THREE.MeshStandardMaterial[]>([]);
   const coneH = radius * 3;
+  // When set, the body grows past the wall top so its rim tucks inside the cone.
+  const bodyH = height + (extendIntoCone ? radius * 0.55 : 0);
 
   React.useEffect(() => {
     invalidate();
@@ -1315,7 +1462,8 @@ function Tower({
 
   useFrame(() => {
     const roofTarget = 0; // cones stay dark gray — no hover glow
-    const winTarget = hovered ? 2.3 : 1.2;
+    const near = frontPoseNearness(item.href, descendRef.current);
+    const winTarget = frontPosePulse(near, hovered ? 3.2 : 1.2);
     let moving = false;
     if (roofRef.current) {
       const d = roofTarget - roofRef.current.emissiveIntensity;
@@ -1325,9 +1473,10 @@ function Tower({
     for (const m of winRefs.current) {
       if (!m) continue;
       const d = winTarget - m.emissiveIntensity;
-      m.emissiveIntensity += d * 0.15;
+      m.emissiveIntensity += d * 0.25;
       if (Math.abs(d) > 0.01) moving = true;
     }
+    if (near > 0) moving = true; // keep the pulse animating in demand mode
     if (moving) invalidate();
   });
 
@@ -1335,6 +1484,17 @@ function Tower({
     e?.stopPropagation();
     onSelect(item, new THREE.Vector3(position[0], position[1], position[2]));
   };
+
+  // Label sits beside the window the camera flies into, on its left (camera POV).
+  // STRUCTURE_BY_ROUTE.win is an offset from its `c`; re-base into tower-local.
+  const entry = STRUCTURE_BY_ROUTE[item.href];
+  const labelPos: Vec3 = entry
+    ? [
+        entry.c[0] + entry.win[0] - position[0] - (radius + 0.8),
+        entry.c[1] + entry.win[1] - position[1],
+        entry.c[2] + entry.win[2] - position[2] - 0.2,
+      ]
+    : [-(radius + 0.6), height * 0.7, radius + 0.2];
 
   return (
     <group
@@ -1346,8 +1506,8 @@ function Tower({
       onPointerOut={() => setHovered(false)}
       onClick={select}
     >
-      <mesh position={[0, height / 2, 0]}>
-        <cylinderGeometry args={[radius * 0.86, radius, height, 16]} />
+      <mesh position={[0, bodyH / 2, 0]}>
+        <cylinderGeometry args={[radius * 0.86, radius, bodyH, 16]} />
         <meshStandardMaterial
           color={WHITE}
           roughness={0.85}
@@ -1394,7 +1554,7 @@ function Tower({
         // sits flush on the wall instead of embedding (the low ones looked chipped).
         const localR = radius * (1 - 0.14 * f);
         return (
-          <mesh key={i} position={[0, height * f, localR - 0.02]}>
+          <mesh key={i} position={[0, height * f, localR - 0.01]}>
             <boxGeometry args={[0.18, 0.42, 0.06]} />
             <meshStandardMaterial
               ref={(m) => {
@@ -1417,19 +1577,16 @@ function Tower({
         />
       ))}
 
-      <Html position={[0, height + coneH + 0.5, 0]} center zIndexRange={[20, 0]}>
+      <Html position={labelPos} center distanceFactor={22} zIndexRange={[20, 0]}>
         <button
           type="button"
           onClick={() => select()}
-          aria-label={`Go to ${item.label}`}
-          className={`pointer-events-auto flex items-center gap-1.5 whitespace-nowrap rounded-pill border bg-[rgba(11,16,38,0.82)] px-3 py-1.5 text-xs font-semibold text-accent-text shadow-glow-sm backdrop-blur transition-all hover:border-accent hover:shadow-glow focus-visible:shadow-focus focus-visible:outline-none ${
-            hovered
-              ? "border-accent shadow-glow"
-              : "border-[rgba(var(--accent-glow),0.5)]"
+          aria-label={`Go to ${item.tower}`}
+          className={`pointer-events-auto whitespace-nowrap text-xs font-semibold [text-shadow:0_1px_10px_rgba(0,0,0,0.95)] transition-colors focus-visible:outline-none ${
+            hovered ? "text-foreground" : "text-accent-text"
           }`}
         >
-          <span aria-hidden>{item.glyph}</span>
-          {item.label}
+          {item.tower}
         </button>
       </Html>
     </group>
@@ -1444,10 +1601,12 @@ function Tower({
 function Owlery({
   item,
   position,
+  descendRef,
   onSelect,
 }: {
   item: NavItem;
   position: Vec3;
+  descendRef: React.MutableRefObject<number>;
   onSelect: (item: NavItem, pos: THREE.Vector3) => void;
 }) {
   const [hovered, setHovered] = React.useState(false);
@@ -1461,14 +1620,17 @@ function Owlery({
   useFrame(() => {
     const m = winRef.current;
     if (!m) return;
-    const d = (hovered ? 2.3 : 1.2) - m.emissiveIntensity;
-    m.emissiveIntensity += d * 0.15;
-    if (Math.abs(d) > 0.01) invalidate();
+    const near = frontPoseNearness(item.href, descendRef.current);
+    const target = frontPosePulse(near, hovered ? 3.2 : 1.2);
+    const d = target - m.emissiveIntensity;
+    m.emissiveIntensity += d * 0.25;
+    if (Math.abs(d) > 0.01 || near > 0) invalidate();
   });
 
   const radius = 0.5; // slimmer than About (0.8)
   const height = 6.9; // taller than About (3.4) / Great Hall, shorter than Projects (5.2)
   const coneH = radius * 2.7;
+  const bodyH = height + radius * 0.55; // body grows up so its rim tucks inside the cone (no gap at eaves)
   const winF = 0.85; // window high up, just below the roof
   const winLocalR = radius * (1 - 0.14 * winF); // sit flush on the tapered wall
 
@@ -1482,6 +1644,9 @@ function Owlery({
     onSelect(item, new THREE.Vector3(position[0], position[1], position[2]));
   };
 
+  // Label beside the high window the camera flies into, on its left (camera POV).
+  const labelPos: Vec3 = [-(radius + 0.9), height * winF, winLocalR + 0.2];
+
   return (
     <group
       position={position}
@@ -1493,8 +1658,8 @@ function Owlery({
       onClick={select}
     >
       {/* body */}
-      <mesh position={[0, height / 2, 0]}>
-        <cylinderGeometry args={[radius * 0.86, radius, height, 16]} />
+      <mesh position={[0, bodyH / 2, 0]}>
+        <cylinderGeometry args={[radius * 0.86, radius, bodyH, 16]} />
         <meshStandardMaterial
           color={WHITE}
           roughness={0.85}
@@ -1564,19 +1729,16 @@ function Owlery({
         </mesh>
       </group>
 
-      <Html position={[0, height + coneH + 0.7, 0]} center zIndexRange={[20, 0]}>
+      <Html position={labelPos} center distanceFactor={22} zIndexRange={[20, 0]}>
         <button
           type="button"
           onClick={() => select()}
-          aria-label={`Go to ${item.label}`}
-          className={`pointer-events-auto flex items-center gap-1.5 whitespace-nowrap rounded-pill border bg-[rgba(11,16,38,0.82)] px-3 py-1.5 text-xs font-semibold text-accent-text shadow-glow-sm backdrop-blur transition-all hover:border-accent hover:shadow-glow focus-visible:shadow-focus focus-visible:outline-none ${
-            hovered
-              ? "border-accent shadow-glow"
-              : "border-[rgba(var(--accent-glow),0.5)]"
+          aria-label={`Go to ${item.tower}`}
+          className={`pointer-events-auto whitespace-nowrap text-xs font-semibold [text-shadow:0_1px_10px_rgba(0,0,0,0.95)] transition-colors focus-visible:outline-none ${
+            hovered ? "text-foreground" : "text-accent-text"
           }`}
         >
-          <span aria-hidden>{item.glyph}</span>
-          {item.label}
+          {item.tower}
         </button>
       </Html>
     </group>

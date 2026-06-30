@@ -9,7 +9,7 @@ import type { NavItem, ProjectLink } from "./types";
 export const siteConfig = {
   name: "Phoebe Rhone Gangoso",
   shortName: "Phoebe R. Gangoso",
-  role: "AI Engineer",
+  role: "Software Engineering | AI | Builder",
   // Headline differentiator from the brief.
   tagline: "The castle makes me memorable; the Hat makes me hireable.",
   description:
@@ -26,41 +26,45 @@ export const siteConfig = {
  * Primary navigation — each item is also a "tower" in the future 3D castle.
  * This list IS the accessible fallback menu; the castle is an enhancement on top.
  */
+// `label` is the short name shown in the header/footer nav; `tower` is the
+// themed name shown on the 3D castle structure. The array order is the nav-bar
+// order — the 3D scene picks each structure by `href`, so it stays independent
+// of this ordering.
 export const navItems: NavItem[] = [
   {
-    label: "Great Hall",
+    label: "Home",
     href: "/great-hall",
-    tower: "The Great Hall",
+    tower: "Great Hall",
     description: "Welcome — meet the wizard and the Sorting Hat.",
     glyph: "🏰",
   },
   {
+    label: "Sorting Hat",
+    href: "/sorting-hat",
+    tower: "Ask the Sorting Hat",
+    description: "Ask the enchanted Hat about my work.",
+    glyph: "🎩",
+  },
+  {
     label: "Projects",
     href: "/projects",
-    tower: "The Library",
+    tower: "Library",
     description: "Case studies, kept in spellbook cards.",
     glyph: "📚",
   },
   {
-    label: "About",
-    href: "/about",
-    tower: "The Study",
-    description: "The wizard behind the work.",
-    glyph: "🪄",
-  },
-  {
-    label: "Resume",
-    href: "/resume",
-    tower: "The Owlery",
-    description: "An acceptance letter — downloadable.",
-    glyph: "📜",
-  },
-  {
     label: "Contact",
     href: "/contact",
-    tower: "The Owl Post",
+    tower: "Owlery",
     description: "Send an owl.",
     glyph: "🦉",
+  },
+  {
+    label: "About",
+    href: "/about",
+    tower: "Potions",
+    description: "The wizard behind the work.",
+    glyph: "⚗️",
   },
 ];
 

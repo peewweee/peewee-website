@@ -56,8 +56,8 @@ No API keys are required to run Phase 1. The AI and email features are stubbed (
 
 **Phase 1 — content site (ships first)**
 
-- Routes: `/` (Great Hall), `/projects`, `/projects/[slug]`, `/about`, `/resume`,
-  `/contact`, plus a themed 404.
+- Routes: `/` (castle nav), `/great-hall` (home), `/sorting-hat`, `/projects`,
+  `/projects/[slug]`, `/about`, `/resume`, `/contact`, plus a themed 404.
 - **Contentlayer** ([`contentlayer2`](https://github.com/timlrx/contentlayer2)) MDX for the
   four case studies in [`content/projects`](content/projects): Aura, Solar-Connect, Arduino
   Day PH 2025, and a 4th UI/UX placeholder. Each has title, themed framing, problem, role,

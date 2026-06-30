@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { siteConfig } from "@/lib/site";
 import { getProjects } from "@/lib/projects";
@@ -34,13 +34,8 @@ export default function GreatHallPage() {
           {siteConfig.role}
         </p>
         <p className="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-foreground-muted">
-          A graduating Computer Engineer building production AI. This portfolio is itself
-          the proof: an AI <strong className="text-foreground">Sorting Hat</strong>{" "}
-          answers questions about my work using retrieval-augmented generation — grounded
-          only in my resume and project write-ups.
-        </p>
-        <p className="mt-4 font-serif text-lg italic text-foreground-muted">
-          {siteConfig.tagline}
+          No muggles allowed here! Hi, I&rsquo;m Phoebe. Explore my tech growth from software engineering to AI development and ask the <strong className="text-foreground">Sorting Hat</strong>{" "}
+          anything about me!
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
@@ -51,12 +46,9 @@ export default function GreatHallPage() {
             </Link>
           </Button>
           <Button asChild variant="secondary">
-            <Link href="/resume">Read the acceptance letter</Link>
+            <Link href="/sorting-hat">Ask the Sorting Hat</Link>
           </Button>
-          <span className="inline-flex items-center gap-1.5 self-center text-sm text-foreground-faint">
-            <Sparkles className="size-4 text-accent-text" aria-hidden />
-            …or ask the Hat, bottom-right
-          </span>
+
         </div>
       </section>
 

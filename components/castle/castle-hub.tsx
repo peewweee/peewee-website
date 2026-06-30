@@ -8,7 +8,6 @@ import { navItems } from "@/lib/site";
 import type { NavItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useCastle3D } from "@/lib/use-preference";
-import { useEnterReveal } from "@/components/page-reveal";
 import { CastleSilhouette, CastleTowerNav } from "./castle-fallback";
 
 // Heavy three.js bundle — code-split and loaded client-side only, on demand.
@@ -56,92 +55,110 @@ export function CastleHub({
    each tower zooms in + warps to its route. Header nav is the a11y fallback.
    ============================================================================ */
 function CastleHero({ items, className }: { items: NavItem[]; className?: string }) {
-  const enter = useEnterReveal();
-  const sectionRef = React.useRef<HTMLElement>(null);
   const descendRef = React.useRef(0);
   const invalidateRef = React.useRef<() => void>(() => {});
-  const navigatedRef = React.useRef(false);
   const titleRef = React.useRef<HTMLDivElement>(null);
 
-  // Always begin at the top so the dive starts from the wide framing.
+  // Scroll drives the camera TOUR and LOOPS: wheel/touch accumulate descendRef
+  // (the value shared with the scene), wrapping 0→1→0, so reaching the original
+  // POV and scrolling on simply restarts the tour (TOUR starts and ends at the
+  // same wide pose, so the wrap is seamless). descendRef is the single source of
+  // truth — not a private counter — so when the scene's back-to-castle intro
+  // SEEDS it at the tower we returned to, scrolling resumes from there with no
+  // snap. The page itself never scrolls (home IS the castle), so this hijacks
+  // wheel/touch; keyboard users navigate via the header nav.
   React.useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
-  // Scroll → slowly fly the camera into the Great Hall's window (scrubbed by
-  // scroll), fading the title out. Near the end the bright-yellow window glow
-  // fills the screen, then we navigate to /great-hall.
-  React.useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
+    const LOOP_PX = 9000; // wheel pixels for one full loop of the tour
     let raf = 0;
-    const update = () => {
+    const apply = () => {
       raf = 0;
-      const rect = section.getBoundingClientRect();
-      const total = rect.height - window.innerHeight;
-      const d = total > 0 ? clamp01(-rect.top / total) : 0;
+      const d = ((descendRef.current % 1) + 1) % 1; // wrap to [0, 1)
       descendRef.current = d;
       if (titleRef.current) {
-        titleRef.current.style.opacity = String(1 - clamp01(d / 0.22));
+        titleRef.current.style.opacity = String(1 - clamp01(d / 0.08));
       }
       invalidateRef.current();
-      if (d >= 0.995 && !navigatedRef.current) {
-        navigatedRef.current = true;
-        enter("/great-hall");
-      }
     };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(apply);
     };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    // Accumulate onto descendRef, keeping it normalized so the scene (which
+    // clamps, not wraps) never sees an out-of-range value mid-loop.
+    const bump = (delta: number) => {
+      descendRef.current = (((descendRef.current + delta) % 1) + 1) % 1;
+      schedule();
+    };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      bump(e.deltaY / LOOP_PX);
+    };
+    let lastY = 0;
+    const onTouchStart = (e: TouchEvent) => {
+      lastY = e.touches[0]?.clientY ?? 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const y = e.touches[0]?.clientY ?? 0;
+      bump(((lastY - y) * 2.2) / LOOP_PX);
+      lastY = y;
+    };
+    // Paint now, then again on the next couple of beats so the title syncs once
+    // the lazy-mounted scene has seeded descendRef (return-from-page intro).
+    apply();
+    const t1 = window.setTimeout(schedule, 260);
+    const t2 = window.setTimeout(schedule, 950);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [enter]);
+  }, []);
 
   return (
     <section
-      ref={sectionRef}
       aria-label="The castle — site navigation"
       data-castle-mount="3d"
-      className={cn("relative h-[320vh] w-full", className)}
+      className={cn(
+        "relative h-[calc(100svh-4rem)] w-full overflow-hidden",
+        className,
+      )}
     >
-      <div className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden">
-        <div className="absolute inset-0">
-          {/* Only ever the 3D castle — no 2D silhouette to flash on (re)mount. */}
-          <SceneBoundary fallback={null}>
-            <CastleScene
-              items={items}
-              descendRef={descendRef}
-              onReady={(fn) => {
-                invalidateRef.current = fn;
-                fn();
-              }}
-            />
-          </SceneBoundary>
-        </div>
+      <div className="absolute inset-0">
+        {/* Only ever the 3D castle — no 2D silhouette to flash on (re)mount. */}
+        <SceneBoundary fallback={null}>
+          <CastleScene
+            items={items}
+            descendRef={descendRef}
+            onReady={(fn) => {
+              invalidateRef.current = fn;
+              fn();
+            }}
+          />
+        </SceneBoundary>
+      </div>
 
-        {/* Title overlay — top-left, high enough to clear the castle; fades on scroll */}
-        <div
-          ref={titleRef}
-          className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-[4vh] sm:px-10"
-        >
-          <h1 className="font-display text-4xl font-bold text-foreground [text-shadow:0_2px_24px_rgba(0,0,0,0.7)] sm:text-6xl">
-            Welcome, wizard!
-          </h1>
-        </div>
+      {/* Title overlay — top-left, high enough to clear the castle; fades on scroll */}
+      <div
+        ref={titleRef}
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-[4vh] sm:px-10"
+      >
+        <h1 className="font-display text-4xl font-bold text-foreground [text-shadow:0_2px_24px_rgba(0,0,0,0.7)] sm:text-6xl">
+          Welcome, wizard!
+        </h1>
+      </div>
 
-        {/* Hint */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex flex-col items-center gap-1 text-foreground-muted">
-          <span className="text-[11px] uppercase tracking-[0.2em]">
-            Scroll to enter · or click a tower
-          </span>
-          <ChevronDown className="size-5 animate-bounce text-accent-text" aria-hidden />
-        </div>
+      {/* Hint */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex flex-col items-center gap-1 text-foreground-muted">
+        <span className="text-[11px] uppercase tracking-[0.2em]">
+          Scroll to tour · click a tower to enter
+        </span>
+        <ChevronDown className="size-5 animate-bounce text-accent-text" aria-hidden />
       </div>
     </section>
   );
