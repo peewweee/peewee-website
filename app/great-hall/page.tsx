@@ -34,7 +34,7 @@ export default function GreatHallPage() {
           {siteConfig.role}
         </p>
         <p className="mt-6 max-w-2xl text-pretty text-lg leading-relaxed text-foreground-muted">
-          No muggles allowed here! Hi, I&rsquo;m Phoebe. Explore my tech growth from software engineering to AI development and ask the <strong className="text-foreground">Sorting Hat</strong>{" "}
+          No Muggles allowed! Hi, I&rsquo;m Phoebe. Explore my tech growth from software engineering to AI development and ask the <strong className="text-foreground">Sorting Hat</strong>{" "}
           anything about me!
         </p>
 

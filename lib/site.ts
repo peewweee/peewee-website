@@ -8,8 +8,8 @@ import type { NavItem, ProjectLink } from "./types";
  */
 export const siteConfig = {
   name: "Phoebe Rhone Gangoso",
-  shortName: "Phoebe R. Gangoso",
-  role: "Software Engineering | AI | Builder",
+  shortName: "Peewee",
+  role: "Software & AI Developer",
   // Headline differentiator from the brief.
   tagline: "The castle makes me memorable; the Hat makes me hireable.",
   description:

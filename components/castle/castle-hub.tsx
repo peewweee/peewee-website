@@ -69,13 +69,20 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
   // wheel/touch; keyboard users navigate via the header nav.
   React.useEffect(() => {
     const LOOP_PX = 9000; // wheel pixels for one full loop of the tour
+    const FADE_OUT = 0.05; // scroll range to fade the title OUT (leaving the wide view)
+    const FADE_IN = 0.03; // scroll range to fade it back IN (returning after the tour)
     let raf = 0;
     const apply = () => {
       raf = 0;
       const d = ((descendRef.current % 1) + 1) % 1; // wrap to [0, 1)
       descendRef.current = d;
       if (titleRef.current) {
-        titleRef.current.style.opacity = String(1 - clamp01(d / 0.08));
+        // Fade out leaving the wide view (d rising from 0) and back in returning
+        // to it (d approaching 1) — d=0 and d=1 are the same wide pose. Each side
+        // uses its own range.
+        const edge = Math.min(d, 1 - d);
+        const range = d < 0.5 ? FADE_OUT : FADE_IN;
+        titleRef.current.style.opacity = String(1 - clamp01(edge / range));
       }
       invalidateRef.current();
     };
@@ -143,14 +150,19 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
         </SceneBoundary>
       </div>
 
-      {/* Title overlay — top-left, high enough to clear the castle; fades on scroll */}
+      {/* Title overlay — aligned to the header container (same left as the logo);
+          two lines; fades on scroll */}
       <div
         ref={titleRef}
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 px-6 pt-[4vh] sm:px-10"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 pt-[4vh]"
       >
-        <h1 className="font-display text-4xl font-bold text-foreground [text-shadow:0_2px_24px_rgba(0,0,0,0.7)] sm:text-6xl">
-          Welcome, wizard!
-        </h1>
+        <div className="container">
+          <h1 className="font-display text-6xl font-bold leading-tight text-foreground [text-shadow:0_2px_24px_rgba(0,0,0,0.7)] sm:text-7xl">
+            Welcome,
+            <br />
+            wizard!
+          </h1>
+        </div>
       </div>
 
       {/* Hint */}

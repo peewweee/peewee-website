@@ -1,75 +1,52 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
 import { useLeaveReveal } from "@/components/page-reveal";
 
 /**
- * On any content page, scrolling UP while already at the top returns to the home
- * castle: the page shrinks into a closing circular hole, revealing the castle
- * underneath — which then opens zoomed in on this page's tower and pulls out to
- * the wide view (see the scene's intro warp).
+ * A minimal top-left "Back to castle" control shown on every content page.
+ * Clicking it plays the iris close over the current page, then returns to the
+ * home castle — which opens zoomed-in on this page's tower and settles into place
+ * (see page-reveal.tsx + the scene's intro warp). Rendered in the header's
+ * top-left slot on content pages (in place of the logo); the header shows the
+ * logo on the home castle instead. Matches the header nav links' font + hover.
  */
 export function BackToCastle() {
   const pathname = usePathname();
   const leave = useLeaveReveal();
+  const leavingRef = React.useRef(false);
 
-  React.useEffect(() => {
-    if (pathname === "/") return;
-    let fired = false;
-    let armed = false;
-    let acc = 0;
-    const armTimer = setTimeout(() => {
-      armed = true;
-    }, 400);
+  if (pathname === "/") return null;
 
-    const trigger = () => {
-      if (fired) return;
-      fired = true;
-      // Remember which page we left so the castle opens zoomed-in on its tower.
-      try {
-        sessionStorage.setItem("wiz:from", pathname);
-      } catch {
-        /* ignore */
-      }
-      // Shrink this page into a closing circle, revealing the castle underneath.
-      leave("/");
-    };
+  const go = () => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    // Remember which page we left so the castle opens zoomed-in on its tower.
+    try {
+      sessionStorage.setItem("wiz:from", pathname);
+    } catch {
+      /* ignore */
+    }
+    // Shrink this page into a closing circle, revealing the castle underneath.
+    leave("/");
+  };
 
-    const onWheel = (e: WheelEvent) => {
-      if (!armed || window.scrollY > 2) {
-        acc = 0;
-        return;
-      }
-      if (e.deltaY < 0) {
-        acc += -e.deltaY;
-        if (acc > 150) trigger();
-      } else {
-        acc = 0;
-      }
-    };
-
-    let touchY = 0;
-    const onTouchStart = (e: TouchEvent) => {
-      touchY = e.touches[0]?.clientY ?? 0;
-    };
-    const onTouchMove = (e: TouchEvent) => {
-      if (!armed || window.scrollY > 2) return;
-      const dy = (e.touches[0]?.clientY ?? 0) - touchY;
-      if (dy > 90) trigger();
-    };
-
-    window.addEventListener("wheel", onWheel, { passive: true });
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    return () => {
-      clearTimeout(armTimer);
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchmove", onTouchMove);
-    };
-  }, [pathname, leave]);
-
-  return null;
+  return (
+    <Link
+      href="/"
+      onClick={(e) => {
+        e.preventDefault();
+        go();
+      }}
+      aria-label="Back to the castle"
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground-muted transition-colors hover:text-foreground"
+    >
+      <ArrowLeft className="size-4" aria-hidden />
+      Back to castle
+    </Link>
+  );
 }

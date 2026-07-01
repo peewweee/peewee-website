@@ -14,7 +14,7 @@ import { EffectComposer, Bloom } from "@react-three/postprocessing";
 
 import type { NavItem } from "@/lib/types";
 import { readCastleTheme, type CastleTheme } from "@/lib/tokens";
-import { useEnterReveal } from "@/components/page-reveal";
+import { useEnterReveal, registerFlyToTower } from "@/components/page-reveal";
 
 type Vec3 = [number, number, number];
 
@@ -96,8 +96,19 @@ function enterPose(href: string, center: THREE.Vector3) {
 }
 
 // Camera: low, three-quarter front-LEFT (left close & prominent, right recedes).
-const WIDE_POS = new THREE.Vector3(-14, 2.3, 20);
-const WIDE_LOOK = new THREE.Vector3(1, 4, -2);
+const WIDE_POS = new THREE.Vector3(-12, 0.5, 15);
+const WIDE_LOOK = new THREE.Vector3(0, 6, -3);
+
+// On narrow (portrait / mobile) screens the horizontal field of view shrinks, so
+// the wide "whole castle" shot gets cropped at the sides. Pull the camera back as
+// the screen narrows so the full castle stays framed. 1 = the tuned desktop shot.
+const DOLLY_REF_ASPECT = 1.7; // at/above this aspect, keep the desktop framing
+const DOLLY_MAX = 1.7; // furthest pull-back on very narrow phones
+function viewportDolly(width: number, height: number): number {
+  const aspect = width / Math.max(1, height);
+  if (aspect >= DOLLY_REF_ASPECT) return 1;
+  return Math.min(DOLLY_REF_ASPECT / aspect, DOLLY_MAX);
+}
 /** A camera pose framing a structure head-on from the front (+z), full height.
  *  cx/cy/cz = its base center, h = its height, dist = how far in front to stand. */
 function frontPose(cx: number, cy: number, cz: number, h: number, dist: number) {
@@ -113,7 +124,7 @@ function frontPose(cx: number, cy: number, cz: number, h: number, dist: number) 
 // smaller `dist` = the zoom-in, the larger `dist` = the pull-back (tweak these).
 const TOUR: { pos: THREE.Vector3; look: THREE.Vector3 }[] = [
   { pos: WIDE_POS.clone(), look: WIDE_LOOK.clone() }, // original POV (start)
-  frontPose(-6, LEFT_TOP, 0.5, 3, 5.2), // Great Hall — zoom in
+  frontPose(-6.8, LEFT_TOP, 1, 3, 4.0), // Great Hall — zoom in
   frontPose(-4, LEFT_TOP, 11, 8, 5.2), // Great Hall — out a little
   frontPose(-4.5, LEFT_TOP, 1, 10, 4.2), // Projects — zoom in
   frontPose(0, LEFT_TOP, 11, 7, 5.2), // Projects — out a little
@@ -121,7 +132,7 @@ const TOUR: { pos: THREE.Vector3; look: THREE.Vector3 }[] = [
   frontPose(2.4, RIGHT_TOP, 11, 9, 5.2), // Resume — out a little
   frontPose(5.0, RIGHT_TOP, 0.5, 11.5, 3.2), // Contact — zoom in
   frontPose(5.0, RIGHT_TOP, 8, 6.9, 8.0), // Contact — out a little
-  frontPose(5.6, RIGHT_TOP, 1, 3.4, 2.8), // About — zoom in
+  frontPose(5.6, RIGHT_TOP, 2, 3.4, 2.8), // About — zoom in
   { pos: WIDE_POS.clone(), look: WIDE_LOOK.clone() }, // back to original POV
 ];
 
@@ -823,7 +834,11 @@ function SceneContents({
   const navigatedRef = React.useRef(false);
   const inv = useThree((s) => s.invalidate);
   const scene = useThree((s) => s.scene);
+  const size = useThree((s) => s.size);
   const driveRef = React.useRef<number | null>(null);
+  // Lighten fog in step with the mobile camera pull-back so the farther (whole-
+  // castle) shot doesn't fade into the haze.
+  const fogDensity = 0.015 / viewportDolly(size.width, size.height);
 
   React.useEffect(() => {
     onReady?.(inv);
@@ -906,6 +921,25 @@ function SceneContents({
     [drive, handleArrive],
   );
 
+  // Bridge for the header nav: clicking "Projects" (etc.) dives into that tower
+  // just like clicking the tower does. Register a route→fly action; the position
+  // per route matches where each structure is rendered. handleSelect no-ops if a
+  // fly is already running, so a stray double-click can't double-navigate.
+  React.useEffect(() => {
+    registerFlyToTower((href) => {
+      const item = items.find((it) => it.href === href);
+      if (!item) return false;
+      const tower = TOWERS.find((tw) => tw.href === href);
+      let p: Vec3 | null = tower ? tower.position : null;
+      if (!p && href === "/great-hall") p = [-7, LEFT_TOP, -2];
+      if (!p && href === "/contact") p = [5.0, RIGHT_TOP, -0.4];
+      if (!p) return false;
+      handleSelect(item, new THREE.Vector3(p[0], p[1], p[2]));
+      return true;
+    });
+    return () => registerFlyToTower(null);
+  }, [items, handleSelect]);
+
   // "Back to castle" intro: if we arrived from a content page (wiz:from), start
   // the camera zoomed in on that page's structure (inside its window) and settle
   // at that tower's head-on front pose — the same spot the scroll tour frames it.
@@ -966,7 +1000,7 @@ function SceneContents({
     <>
       <color attach="background" args={[theme.bg]} />
       {/* Low-lying exponential fog for the misty cliff base */}
-      <fogExp2 attach="fog" args={[theme.bgSunken, 0.015]} />
+      <fogExp2 attach="fog" args={[theme.bgSunken, fogDensity]} />
 
       <ambientLight intensity={0.3} />
       <directionalLight
@@ -1359,6 +1393,7 @@ function CameraRig({
   const look = React.useRef(WIDE_LOOK.clone());
   const desiredPos = React.useRef(new THREE.Vector3());
   const desiredLook = React.useRef(new THREE.Vector3());
+  const wideResp = React.useRef(new THREE.Vector3());
   React.useEffect(() => {
     const el = gl.domElement;
     const onMove = (e: PointerEvent) => {
@@ -1402,7 +1437,17 @@ function CameraRig({
       const p = d * (N - 1);
       const i = Math.min(Math.floor(p), N - 2);
       const t = easeInOut(p - i);
-      desiredPos.current.lerpVectors(TOUR[i].pos, TOUR[i + 1].pos, t);
+      // Wide endpoints (stops 0 and N-1) dolly back on narrow/portrait screens so
+      // the whole castle fits; tower front poses are unaffected.
+      const dolly = viewportDolly(state.size.width, state.size.height);
+      wideResp.current.set(
+        WIDE_LOOK.x + (WIDE_POS.x - WIDE_LOOK.x) * dolly,
+        WIDE_POS.y + (dolly - 1) * 1.5,
+        WIDE_LOOK.z + (WIDE_POS.z - WIDE_LOOK.z) * dolly,
+      );
+      const startPos = i === 0 ? wideResp.current : TOUR[i].pos;
+      const endPos = i + 1 === N - 1 ? wideResp.current : TOUR[i + 1].pos;
+      desiredPos.current.lerpVectors(startPos, endPos, t);
       desiredLook.current.lerpVectors(TOUR[i].look, TOUR[i + 1].look, t);
       // gentle pointer parallax, only on the opening wide shot (fades by stop 1)
       const par = Math.max(0, 1 - p);

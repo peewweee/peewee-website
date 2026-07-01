@@ -20,6 +20,20 @@ export function registerCloseReveal(fn: ((onDone: () => void) => void) | null) {
   closeReveal = fn;
 }
 
+// The mounted castle scene registers a "fly into this route's tower" action so
+// the header nav can trigger the same 3D dive as clicking the tower directly.
+// Only present on the home/castle page — elsewhere the nav falls back to a plain
+// reveal (there's no castle to dive through).
+let flyToTower: ((href: string) => boolean) | null = null;
+export function registerFlyToTower(fn: ((href: string) => boolean) | null) {
+  flyToTower = fn;
+}
+/** Ask the castle to dive into the tower for `href`. Returns true if it handled
+ *  it (castle mounted + tower found), false to fall back to a plain reveal. */
+export function requestFlyToTower(href: string): boolean {
+  return flyToTower ? flyToTower(href) : false;
+}
+
 export function useEnterReveal() {
   const router = useRouter();
   return React.useCallback(
