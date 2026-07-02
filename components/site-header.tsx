@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Sparkles } from "lucide-react";
+import { Menu } from "lucide-react";
 
 import { navItems, siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -41,11 +41,12 @@ export function SiteHeader() {
   const onNavClick = (e: React.MouseEvent, href: string) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     if (pathname === href) return;
+    // Only the castle page gets the tower-dive + reveal. From content pages the
+    // nav navigates plainly — let the Link's default handle it (no transition).
+    if (pathname !== "/") return;
     e.preventDefault();
     setMobileOpen(false); // uncover the castle behind the mobile menu before the dive
-    // On the castle page, dive into the tower (same as clicking it); on content
-    // pages there's no castle to dive through, so fall back to the iris reveal.
-    if (!requestFlyToTower(href)) enter(href);
+    if (!requestFlyToTower(href)) enter(href); // dive; reveal only if the scene isn't ready
   };
 
   return (
@@ -57,10 +58,6 @@ export function SiteHeader() {
             href="/"
             className="group flex items-center gap-2 rounded-pill font-display text-lg font-bold tracking-wide text-foreground"
           >
-            <Sparkles
-              className="size-5 text-accent-text transition-transform group-hover:scale-110"
-              aria-hidden
-            />
             <span className="text-accent-text">{siteConfig.shortName}</span>
           </Link>
         ) : (

@@ -7,6 +7,8 @@ import { getProjects } from "@/lib/projects";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SpellbookCard } from "@/components/spellbook-card";
+import { TechStack } from "@/components/tech-stack";
+import { Experience } from "@/components/experience";
 
 export const metadata: Metadata = {
   title: "Great Hall",
@@ -52,6 +54,12 @@ export default function GreatHallPage() {
         </div>
       </section>
 
+      {/* Tech Stack — grouped skills + icons, before the Library/Projects */}
+      <TechStack />
+
+      {/* Experiences — work history + leadership, below the Tech Stack */}
+      <Experience />
+
       {/* Featured projects */}
       <section aria-labelledby="featured-heading">
         <div className="flex items-end justify-between gap-4">
@@ -60,7 +68,7 @@ export default function GreatHallPage() {
               The Library
             </p>
             <h2 id="featured-heading" className="mt-2 font-display text-3xl font-bold">
-              Featured spellbooks
+              Projects
             </h2>
           </div>
           <Link

@@ -261,6 +261,28 @@
 }
 
 /* =========================================================================
+   Border beam — a light comet that travels around an element's border
+   (magicui-style). Mask keeps the comet on the border ring only.
+   ========================================================================= */
+
+@keyframes border-beam {
+  to {
+    offset-distance: 100%;
+  }
+}
+
+.border-beam-container {
+  border: 1px solid transparent;
+  -webkit-mask-image: linear-gradient(transparent, transparent),
+    linear-gradient(#000, #000);
+  mask-image: linear-gradient(transparent, transparent), linear-gradient(#000, #000);
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+/* =========================================================================
    Reduced motion — neutralize every animation/transition (WCAG 2.1 AA)
    ========================================================================= */
 

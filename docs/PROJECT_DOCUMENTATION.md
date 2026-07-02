@@ -10,7 +10,7 @@
 | **Status**        | Build in progress — Phases 0–2 done (content site + 3D castle); Phase 3 (AI Hat) + Phase 4 (atmosphere) scaffolded as stubs                                                                                                                                                                          |
 | **This document** | The brief for the design phase and the build. Covers concept, audience, sitemap, features, tech stack, architecture, plan, and design direction. A ready-to-paste prompt for the design system is in Appendix A. |
 
-> **Note on the name:** the owner name above is taken from the resume (Phoebe Rhone Gangoso). Swap it everywhere if the site should carry a different name.
+> **Note on the name:** the owner name above is taken from the resume (Phoebe Rhone Gangoso). Swap it everywhere if the site should carry a different name. The site config also uses the nickname **"Peewee"** and the on-site role label **"Software & AI Developer."**
 
 ---
 
@@ -40,13 +40,17 @@ The headline differentiator: _the castle makes me memorable; the Hat makes me hi
 
 ## 3. Sitemap
 
-- **Great Hall (home)** — the interactive 3D castle + the Sorting Hat greeting
-- **Projects ×4** — themed case-study pages
-- **About** — the wizard behind it
-- **Resume** — a downloadable "acceptance letter"
-- **Contact** — an "owl post" form
+The landing page (`/`) **is the 3D castle** — a full-screen navigation hub. Each structure on the castle is a "tower" that warps to its section:
 
-Global, present on every page: the **Sorting Hat**, the **music toggle**, and the **wand cursor** (desktop).
+| Tower (on the castle) | Section | Route |
+| --- | --- | --- |
+| **Great Hall** | Home / welcome | `/great-hall` |
+| **Ask the Sorting Hat** | The AI Hat | `/sorting-hat` |
+| **Library** | Projects (×4 case studies) | `/projects` |
+| **Owlery** | Contact ("owl post") | `/contact` |
+| **Potions** | About | `/about` |
+
+`/resume` is a downloadable "acceptance letter" page, reached from the header/About rather than as a primary tower. Global on every page: the **music toggle** and the **wand cursor** (desktop).
 
 ---
 
@@ -54,11 +58,11 @@ Global, present on every page: the **Sorting Hat**, the **music toggle**, and th
 
 ### 4.1 Interactive 3D castle (navigation hub)
 
-The homepage is a low-poly, night-time castle. Glowing towers and doors are the navigation — click a tower and the camera glides to that section. The Sorting Hat lives in the Great Hall.
+The landing page (`/`) is a full-screen, low-poly night-time castle — and it **is** the navigation. **Scroll drives a looping camera tour** around the castle (wheel on desktop, touch on mobile); the page itself never scrolls. Each glowing tower is a section, and choosing one **flies the camera into a lit window** and dissolves through a soft iris/portal reveal into that page. A **"back to castle"** control in the header returns you to the hub, re-seeded on the tower you came from.
 
-- Lazy-loads **after** a fast first paint so it never blocks initial load.
-- Ships a **2D fallback** (a static castle hero + a normal menu) for mobile, weak GPUs, and browsers without WebGL.
-- A **plain text menu always exists underneath** for keyboard users and accessibility — the castle is an enhancement, never the only way to navigate.
+- The heavy three.js bundle is **code-split and lazy-loaded** on eligible devices (WebGL + motion allowed), after first paint — it isn't in the home page's initial JS.
+- The **header nav is the always-present accessible / keyboard path**; the castle is an enhancement, never the only way to navigate. A 2D castle **silhouette + tower list** covers no-WebGL and reduced-motion. _(The earlier manual 2D/3D toggle was removed, and mobile now gets the 3D tour too.)_
+- The five towers: **Great Hall** (home), **Ask the Sorting Hat**, **Library** (projects), **Owlery** (contact), **Potions** (about).
 
 ### 4.2 The Sorting Hat (AI) — three modes
 
@@ -68,7 +72,7 @@ One character, three demos, telling a complete AI-engineering story:
 2. **Get Sorted (classification).** The Hat asks a few quick questions (or reads a sentence the visitor types) and sorts them into a Hogwarts house; the site accent then shifts to that house. Demonstrates LLM classification and structured output. Light, fun, shareable.
 3. **Behind the Magic (transparency).** A short, visual "how it works" panel showing the real pipeline (embeddings → vector search → LLM, plus caching and rate-limiting). This is what turns "cute chatbot" into "this person can ship AI."
 
-**One panel, two modes.** All of this lives in a **single Hat panel**. When it opens, the Hat offers two quick-reply chips — _"Ask about Phoebe"_ and _"Sort me into a house"_ — and the visitor can switch anytime; _Behind the Magic_ is a small expandable link in the same panel. The two chat modes route to two different backends (see §6): **Ask → `/api/ask`** (RAG) and **Sort → `/api/sort`** (classification). Intents are explicit chips rather than auto-detected — clearer for the visitor, and each request routes cleanly to the right endpoint.
+**One panel, two modes.** The Hat has its own tower and route (**`/sorting-hat`**, "Ask the Sorting Hat") and is a single panel with two modes. It opens with two quick-reply chips — _"Ask about Phoebe"_ and _"Sort me into a house"_ — and the visitor can switch anytime; _Behind the Magic_ is a small expandable link in the same panel. The two chat modes route to two different backends (see §6): **Ask → `/api/ask`** (RAG) and **Sort → `/api/sort`** (classification). Intents are explicit chips rather than auto-detected — clearer for the visitor, and each request routes cleanly to the right endpoint.
 
 **Guardrails.** Answers are strictly grounded in my data; the Hat politely refuses off-topic questions; the API key stays server-side; a spend cap + caching + rate-limiting protect the public endpoint.
 
@@ -200,7 +204,7 @@ Content first means there is always a shippable portfolio; the 3D, AI, and atmos
 - **Fast, scannable core.** Projects, resume, and contact reachable in one click. The 30-second recruiter must succeed even with all the magic switched on.
 - **Accessibility (WCAG 2.1 AA).** Verified color contrast (check gold-on-navy carefully), full keyboard navigation, visible focus states, reduced-motion variants, screen-reader-friendly structure, an accessible alternative to the 3D castle, music default-off, and a wand-cursor off switch (disabled on touch).
 - **Performance.** Fast first paint; lazy-load the 3D and audio; compressed assets; aim for strong Lighthouse scores.
-- **Responsive.** Desktop delivers the 3D "wow"; mobile degrades to a clean themed 2D layout (static castle hero, normal nav, no custom cursor).
+- **Responsive.** The 3D castle tour runs on **both desktop (wheel) and mobile (touch)** — there's no manual 2D/3D toggle. Ineligible cases (no-WebGL, reduced-motion) fall back to a 2D castle silhouette + the header tower nav, which is also the keyboard/accessible path.
 - **IP & licensing (practical, not legal advice).** Use original, "wizarding-inspired" assets. Avoid official trademarked crests/logos, the copyrighted film score, and ripped 3D models. Keep it an original fan tribute.
 - **AI safety & cost.** Key server-side; grounded answers only; refuse off-topic; spend cap + cache + rate-limit.
 
