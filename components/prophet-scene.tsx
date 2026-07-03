@@ -54,19 +54,19 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
     const fan = spread * (HTML_SCALE / 0.18);
 
     if (front.current) {
-      front.current.position.set(lerp(0.08, 0.65, t) * fan, lerp(0.0, -0.12, t) + LIFT, 0.06);
+      front.current.position.set(lerp(0.08, 0.7, t) * fan, lerp(0.0, -0.12, t) + LIFT, 0.06);
       front.current.rotation.set(
         lerp(0.04, 0.08, t),
         lerp(-0.015, -0.04, t),
-        lerp(-0.04, -0.07, t),
+        lerp(-0.04, -0.1, t),
       );
     }
     if (back.current) {
-      back.current.position.set(lerp(-0.1, -0.68, t) * fan, lerp(0.13, 0.22, t) + LIFT, -0.06);
+      back.current.position.set(lerp(-0.1, -0.73, t) * fan, lerp(0.13, 0.22, t) + LIFT, -0.06);
       back.current.rotation.set(
         lerp(0.04, 0.08, t),
         lerp(0.015, 0.04, t),
-        lerp(0.05, 0.07, t),
+        lerp(0.05, 0.1, t),
       );
     }
   });

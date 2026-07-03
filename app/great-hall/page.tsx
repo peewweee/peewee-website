@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 
 import { siteConfig } from "@/lib/site";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { FeaturedProphet } from "@/components/featured-prophet";
 import { TechStack } from "@/components/tech-stack";
 import { Experience } from "@/components/experience";
@@ -71,21 +70,14 @@ export default function GreatHallPage() {
       </section>
 
       {/* Behind the magic teaser */}
-      <section className="rounded-card border border-border bg-surface p-6 sm:p-10">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="default">RAG</Badge>
-          <Badge variant="muted">Gemini</Badge>
-          <Badge variant="muted">Upstash Vector</Badge>
-          <Badge variant="muted">Rate-limited + cached</Badge>
-        </div>
-        <h2 className="mt-4 font-display text-2xl font-bold text-foreground">
-          The AI features are the portfolio piece
+      <section className="rounded-card border border-border bg-surface p-5 sm:p-6">
+        <h2 className="font-display text-2xl font-bold text-foreground">
+          The magic behind the Sorting Hat
         </h2>
         <p className="mt-3 max-w-2xl text-foreground-muted">
-          The Sorting Hat is a real retrieval-augmented generation pipeline: embeddings →
-          vector search → a grounded LLM answer with citations, protected by caching and
-          rate-limiting. A &ldquo;Behind the Magic&rdquo; panel will show the live
-          pipeline. (Wiring lands in Phase 3.)
+          The Sorting Hat runs on a real retrieval-augmented generation pipeline:
+          embeddings, vector search, and grounded LLM answers with citations, protected
+          by caching and rate-limiting.
         </p>
         <div className="mt-6">
           <Button asChild variant="secondary">

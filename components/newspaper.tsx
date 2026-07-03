@@ -1,6 +1,8 @@
 "use client";
 
+import * as React from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
@@ -34,7 +36,8 @@ export const AURA_STORY: ProphetStory = {
   deck: "AI · FinTech",
   lead: "A web app that helps users log expenses in natural language, review extracted transactions, understand spending patterns, and get AI-assisted financial guidance.",
   stack: ["Java", "Spring Boot", "PostgreSQL", "Redis", "Gemini API"],
-  href: "/projects/aura",
+  photo: "/projects/aura.png",
+  href: "/projects",
 };
 
 export const CROWDFLOW_STORY: ProphetStory = {
@@ -51,7 +54,8 @@ export const CROWDFLOW_STORY: ProphetStory = {
     "Gemini API",
     "OpenWeather",
   ],
-  href: "/projects/crowdflow",
+  photo: "/projects/crowdflow.png",
+  href: "/projects",
 };
 
 export function Newspaper({
@@ -61,6 +65,8 @@ export function Newspaper({
   story: ProphetStory;
   className?: string;
 }) {
+  // Show the photo once it loads; if the file is missing, keep the engraving box.
+  const [imgOk, setImgOk] = React.useState(true);
   return (
     <div
       className={cn(
@@ -73,7 +79,7 @@ export function Newspaper({
       {/* Top rule + eyebrow */}
       <div className="flex items-center justify-center gap-2 border-b-2 border-double border-ink pb-1 font-mono text-[8px] uppercase tracking-[0.3em] text-ink-muted">
         <span aria-hidden>✦</span>
-        <span>The Wizarding Portfolio</span>
+        <span>The Daily Prophet</span>
         <span aria-hidden>✦</span>
       </div>
 
@@ -108,13 +114,14 @@ export function Newspaper({
       <div className="mt-2 grid grid-cols-[2fr_0.7fr] gap-4">
         <figure className="m-0 flex flex-col">
           <div className="relative aspect-[4/3] w-full overflow-hidden border border-ink/60 bg-parchment-2">
-            {story.photo ? (
+            {story.photo && imgOk ? (
               <Image
                 src={story.photo}
                 alt=""
                 fill
-                sizes="220px"
-                className="object-cover sepia-[0.25] contrast-[1.05]"
+                sizes="320px"
+                onError={() => setImgOk(false)}
+                className="object-cover grayscale contrast-[1.1] mix-blend-multiply"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-[repeating-linear-gradient(45deg,transparent,transparent_5px,rgba(34,28,14,0.07)_5px,rgba(34,28,14,0.07)_6px)] text-center font-mono text-[7px] uppercase tracking-[0.2em] text-ink-faint">
@@ -122,9 +129,12 @@ export function Newspaper({
               </div>
             )}
           </div>
-          <p className="mt-2 font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-ink">
-            Read the case study →
-          </p>
+          <Link
+            href={story.href}
+            className="pointer-events-auto mt-2 inline-block font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-ink underline-offset-2 hover:underline"
+          >
+            Read more →
+          </Link>
         </figure>
 
         <div className="text-[9px] leading-[1.36] text-ink">

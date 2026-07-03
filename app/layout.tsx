@@ -5,7 +5,6 @@ import { fontVariables } from "./fonts";
 import { siteConfig, getSiteUrl } from "@/lib/site";
 import { SiteHeader } from "@/components/site-header";
 import { ConditionalFooter } from "@/components/conditional-footer";
-import { SortingHat } from "@/components/sorting-hat/sorting-hat";
 import { Atmosphere } from "@/components/atmosphere/atmosphere";
 import { PortalTransition } from "@/components/portal-transition";
 
@@ -49,7 +48,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         {/* Global, on every page (Phase 3/4 stubs) */}
-        <SortingHat />
         <Atmosphere />
         <PortalTransition />
       </body>

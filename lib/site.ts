@@ -11,7 +11,7 @@ export const siteConfig = {
   shortName: "Peewee",
   role: "Software & AI Developer",
   // Headline differentiator from the brief.
-  tagline: "The castle makes me memorable; the Hat makes me hireable.",
+  tagline: "Software & AI Developer",
   description:
     "Harry Potter–themed portfolio of Phoebe Rhone Gangoso — graduating Computer Engineer pursuing AI Engineering. An AI 'Sorting Hat' answers questions about her work via retrieval-augmented generation.",
   // Swap '#' for real profiles. Do not commit private addresses.

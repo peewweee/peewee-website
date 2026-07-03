@@ -1,18 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, Send } from "lucide-react";
+import { Send } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { AskResponse, Citation } from "@/lib/rag/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 
 type Message = {
   id: number;
@@ -92,78 +86,65 @@ export function SortingHat() {
   }
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          aria-label="Ask the Sorting Hat"
-          className="fixed bottom-5 right-5 z-30 flex items-center gap-2 rounded-pill bg-gold px-5 py-3 font-sans text-sm font-semibold text-gold-ink shadow-glow-lg transition-all hover:-translate-y-0.5 hover:bg-gold-hover focus-visible:shadow-focus focus-visible:outline-none"
-        >
-          <Sparkles className="size-4" aria-hidden />
-          <span className="hidden sm:inline">Ask the Hat</span>
-        </button>
-      </DialogTrigger>
-
-      <DialogContent className="flex h-[min(85vh,640px)] w-[calc(100vw-2rem)] max-w-xl flex-col gap-0 overflow-hidden p-0">
-        <div className="border-b border-border p-4">
-          <DialogTitle className="flex items-center gap-2">
-            <span aria-hidden className="text-xl">
-              🎩
-            </span>
-            The Sorting Hat
-          </DialogTitle>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <Badge size="sm" variant="solid">
-              Ask the Hat
-            </Badge>
-            <Badge size="sm" variant="muted" title="Coming in Phase 3">
-              Get Sorted · soon
-            </Badge>
-            <Badge size="sm" variant="muted" title="Coming in Phase 3">
-              Behind the Magic · soon
-            </Badge>
-          </div>
+    <div className="mx-auto flex h-[min(70vh,640px)] w-full max-w-2xl flex-col overflow-hidden rounded-card border border-border bg-surface">
+      <div className="border-b border-border p-4">
+        <h2 className="flex items-center gap-2 font-display text-lg font-bold text-foreground">
+          <span aria-hidden className="text-xl">
+            🎩
+          </span>
+          The Sorting Hat
+        </h2>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Badge size="sm" variant="solid">
+            Ask the Hat
+          </Badge>
+          <Badge size="sm" variant="muted" title="Coming in Phase 3">
+            Get Sorted · soon
+          </Badge>
+          <Badge size="sm" variant="muted" title="Coming in Phase 3">
+            Behind the Magic · soon
+          </Badge>
         </div>
+      </div>
 
-        <div
-          ref={scrollRef}
-          className="flex-1 space-y-4 overflow-y-auto p-4"
-          aria-live="polite"
-          aria-atomic="false"
-        >
-          {messages.map((m) => (
-            <ChatBubble key={m.id} message={m} />
-          ))}
-          {thinking && <ThinkingBubble />}
-        </div>
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-4 overflow-y-auto p-4"
+        aria-live="polite"
+        aria-atomic="false"
+      >
+        {messages.map((m) => (
+          <ChatBubble key={m.id} message={m} />
+        ))}
+        {thinking && <ThinkingBubble />}
+      </div>
 
-        <form
-          onSubmit={onSubmit}
-          className="flex items-center gap-2 border-t border-border p-3"
+      <form
+        onSubmit={onSubmit}
+        className="flex items-center gap-2 border-t border-border p-3"
+      >
+        <label htmlFor="hat-input" className="sr-only">
+          Ask the Sorting Hat a question
+        </label>
+        <input
+          id="hat-input"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask about Phoebe's work…"
+          maxLength={500}
+          autoComplete="off"
+          className="flex-1 rounded-field border border-border bg-bg-sunken px-3.5 py-2.5 text-sm text-foreground placeholder:text-foreground-faint focus-visible:border-accent focus-visible:shadow-focus focus-visible:outline-none"
+        />
+        <Button
+          type="submit"
+          size="icon"
+          aria-label="Send"
+          disabled={!input.trim() || thinking}
         >
-          <label htmlFor="hat-input" className="sr-only">
-            Ask the Sorting Hat a question
-          </label>
-          <input
-            id="hat-input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about Phoebe's work…"
-            maxLength={500}
-            autoComplete="off"
-            className="flex-1 rounded-field border border-border bg-bg-sunken px-3.5 py-2.5 text-sm text-foreground placeholder:text-foreground-faint focus-visible:border-accent focus-visible:shadow-focus focus-visible:outline-none"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            aria-label="Send"
-            disabled={!input.trim() || thinking}
-          >
-            <Send className="size-4" />
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+          <Send className="size-4" />
+        </Button>
+      </form>
+    </div>
   );
 }
 

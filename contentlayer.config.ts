@@ -22,6 +22,8 @@ export const Project = defineDocumentType(() => ({
     category: { type: "string", required: false },
     /** Cover image path (in /public) used as the card background, e.g. "/projects/aura.png". */
     cover: { type: "string", required: false },
+    /** External URL the card links to — the live site or repo. */
+    link: { type: "string", required: false },
     /** Optional themed framing, e.g. "Divination / crystal ball — see your financial future". */
     themedFraming: { type: "string", required: false },
     /** Plain, scannable one-liner of what it is. */
@@ -53,10 +55,6 @@ export const Project = defineDocumentType(() => ({
     slug: {
       type: "string",
       resolve: (doc) => doc._raw.flattenedPath.replace(/^projects\//, ""),
-    },
-    url: {
-      type: "string",
-      resolve: (doc) => `/projects/${doc._raw.flattenedPath.replace(/^projects\//, "")}`,
     },
   },
 }));

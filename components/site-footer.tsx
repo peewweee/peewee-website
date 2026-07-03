@@ -16,7 +16,7 @@ export function SiteFooter() {
             <p className="mt-2 text-sm text-foreground-muted">{siteConfig.tagline}</p>
           </div>
 
-          <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
+          <nav aria-label="Footer" className="flex flex-col gap-2">
             {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -28,7 +28,7 @@ export function SiteFooter() {
             ))}
           </nav>
 
-          <ul className="flex flex-wrap gap-x-6 gap-y-2">
+          <ul className="flex flex-col gap-2">
             {siteConfig.socials.map((s) => (
               <li key={s.label}>
                 <a
@@ -42,11 +42,22 @@ export function SiteFooter() {
               </li>
             ))}
           </ul>
+
+                    <ul className="flex flex-col gap-2">
+            <li>
+              <Link
+                href="/resume"
+                className="text-sm text-foreground-muted transition-colors hover:text-accent-text"
+              >
+                Resume
+              </Link>
+            </li>
+          </ul>
+          
         </div>
 
         <p className="text-xs text-foreground-faint">
-          © {year} {siteConfig.name}. An original wizarding-inspired fan tribute — no
-          official marks or scores used.
+          © {year} {siteConfig.name}
         </p>
       </div>
     </footer>
