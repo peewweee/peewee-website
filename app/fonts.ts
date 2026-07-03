@@ -1,13 +1,20 @@
-import { Cinzel, Cormorant_Garamond, Inter, JetBrains_Mono } from "next/font/google";
+import {
+  Cinzel,
+  Cormorant_Garamond,
+  Inter,
+  JetBrains_Mono,
+  UnifrakturMaguntia,
+} from "next/font/google";
 
 /**
  * Fonts loaded via next/font (self-hosted at build time, zero layout shift).
  * Each exposes a CSS variable consumed by `tailwind.config.ts` fontFamily +
  * `app/globals.css`:
- *   --font-cinzel    → display / headings (engraved, magical)
- *   --font-cormorant → editorial serif (hero lines, large quotes)
- *   --font-inter     → UI / body (legibility)
- *   --font-jetbrains → code, token labels, "Behind the Magic"
+ *   --font-cinzel      → display / headings (engraved, magical)
+ *   --font-cormorant   → editorial serif (hero lines, large quotes)
+ *   --font-inter       → UI / body (legibility)
+ *   --font-jetbrains   → code, token labels, "Behind the Magic"
+ *   --font-blackletter → newspaper masthead (Daily-Prophet style)
  */
 
 export const cinzel = Cinzel({
@@ -37,10 +44,18 @@ export const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-/** Convenience: all four font CSS-variable classes, applied on <html>. */
+export const blackletter = UnifrakturMaguntia({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-blackletter",
+  display: "swap",
+});
+
+/** Convenience: all font CSS-variable classes, applied on <html>. */
 export const fontVariables = [
   cinzel.variable,
   cormorant.variable,
   inter.variable,
   jetbrainsMono.variable,
+  blackletter.variable,
 ].join(" ");

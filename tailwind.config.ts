@@ -118,6 +118,7 @@ const config: Config = {
         serif: ["var(--font-cormorant)", "ui-serif", "Georgia", "serif"],
         sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains)", "ui-monospace", "monospace"],
+        blackletter: ["var(--font-blackletter)", "var(--font-cinzel)", "serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

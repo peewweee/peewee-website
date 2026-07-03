@@ -3,10 +3,9 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { siteConfig } from "@/lib/site";
-import { getProjects } from "@/lib/projects";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SpellbookCard } from "@/components/spellbook-card";
+import { FeaturedProphet } from "@/components/featured-prophet";
 import { TechStack } from "@/components/tech-stack";
 import { Experience } from "@/components/experience";
 
@@ -16,9 +15,6 @@ export const metadata: Metadata = {
 };
 
 export default function GreatHallPage() {
-  const projects = getProjects();
-  const featured = projects.slice(0, 3);
-
   return (
     <div className="container space-y-20 py-12 sm:py-16">
       {/* The Great Hall — the welcome / intro */}
@@ -60,31 +56,18 @@ export default function GreatHallPage() {
       {/* Experiences — work history + leadership, below the Tech Stack */}
       <Experience />
 
-      {/* Featured projects */}
+      {/* Featured projects — a "Daily Prophet" front page in 3D */}
       <section aria-labelledby="featured-heading">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-text">
-              The Library
-            </p>
-            <h2 id="featured-heading" className="mt-2 font-display text-3xl font-bold">
-              Projects
-            </h2>
-          </div>
-          <Link
-            href="/projects"
-            className="hidden shrink-0 items-center gap-1.5 text-sm font-semibold text-accent-text hover:text-gold-hover sm:inline-flex"
-          >
-            All projects
-            <ArrowRight className="size-4" aria-hidden />
-          </Link>
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-text">
+            The Library
+          </p>
+          <h2 id="featured-heading" className="mt-2 font-display text-3xl font-bold">
+            Projects
+          </h2>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((project) => (
-            <SpellbookCard key={project.slug} project={project} />
-          ))}
-        </div>
+        <FeaturedProphet />
       </section>
 
       {/* Behind the magic teaser */}

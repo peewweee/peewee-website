@@ -18,8 +18,12 @@ export const Project = defineDocumentType(() => ({
     order: { type: "number", required: false, default: 99 },
     /** One-line magical tagline, e.g. "Lumos" or "Divination". */
     spell: { type: "string", required: false },
-    /** Themed framing, e.g. "Divination / crystal ball — see your financial future". */
-    themedFraming: { type: "string", required: true },
+    /** Plain category label shown on the card, e.g. "AI", "Web Dev", "Full-Stack". */
+    category: { type: "string", required: false },
+    /** Cover image path (in /public) used as the card background, e.g. "/projects/aura.png". */
+    cover: { type: "string", required: false },
+    /** Optional themed framing, e.g. "Divination / crystal ball — see your financial future". */
+    themedFraming: { type: "string", required: false },
     /** Plain, scannable one-liner of what it is. */
     summary: { type: "string", required: true },
     problem: { type: "string", required: false },

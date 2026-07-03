@@ -191,7 +191,10 @@ export function TechStack() {
             className="group relative rounded-card border border-border bg-bg-sunken p-5"
           >
             {/* magicui-style beam, only while hovered */}
-            <BorderBeam className="opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            <BorderBeam
+              size={300}
+              className="opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+            />
             {/* font-sans + font-normal override the global h1–h3 Cinzel/bold base rule */}
             <h3 className="font-sans text-base font-normal text-foreground">
               {cat.title}

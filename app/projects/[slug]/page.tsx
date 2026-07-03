@@ -61,9 +61,11 @@ export default function ProjectPage({ params }: { params: { slug: string } }) {
         <h1 className="mt-3 text-balance font-display text-4xl font-bold text-foreground sm:text-5xl">
           {project.title}
         </h1>
-        <p className="mt-3 font-serif text-xl italic text-foreground-muted">
-          {project.themedFraming}
-        </p>
+        {project.themedFraming && (
+          <p className="mt-3 font-serif text-xl italic text-foreground-muted">
+            {project.themedFraming}
+          </p>
+        )}
         <p className="mt-4 text-lg leading-relaxed text-foreground-muted">
           {project.summary}
         </p>
