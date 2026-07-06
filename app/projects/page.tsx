@@ -18,7 +18,7 @@ export default function ProjectsPage() {
       <PageHeader
         eyebrow="The Library"
         title="Projects"
-        lede="Each project is a real case study — problem, role, stack, and outcome. The theme decorates the card; it never hides the substance."
+        lede="An overview of my work across full-stack development and AI systems."
       />
 
       <div className="grid gap-4 sm:grid-cols-2">

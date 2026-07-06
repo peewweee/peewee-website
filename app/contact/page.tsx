@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { siteConfig } from "@/lib/site";
 import { PageHeader } from "@/components/page-header";
 import { ContactForm } from "@/components/contact-form";
 
@@ -18,18 +17,17 @@ export default function ContactPage() {
           <PageHeader
             eyebrow="The Owl Post"
             title="Send an owl"
-            lede="Hiring, collaborating, or just curious? Drop a note — I read every owl."
+            lede="Wanna collaborate or just curious? Drop a note!"
           />
           <div className="mt-6 space-y-3 text-sm text-foreground-muted">
             <p>
               I&rsquo;m focused on{" "}
-              <strong className="text-foreground">AI Engineering</strong> roles. If
+              <strong className="text-foreground">Software & AI Engineering</strong> roles. If
               that&rsquo;s you, the resume and projects are one click away — and the
-              Sorting Hat (bottom-right) can answer specifics about my work.
+              Sorting Hat can answer specifics about my work.
             </p>
             <p>
-              Prefer another route? Find me via the links in the footer
-              {siteConfig.socials.length > 0 ? " (GitHub, LinkedIn)." : "."}
+              You can also find me via the links below.
             </p>
           </div>
         </div>

@@ -74,10 +74,8 @@ export default function GreatHallPage() {
         <h2 className="font-display text-2xl font-bold text-foreground">
           The magic behind the Sorting Hat
         </h2>
-        <p className="mt-3 max-w-2xl text-foreground-muted">
-          The Sorting Hat runs on a real retrieval-augmented generation pipeline:
-          embeddings, vector search, and grounded LLM answers with citations, protected
-          by caching and rate-limiting.
+        <p className="mt-3 text-foreground-muted">
+          The Sorting Hat is an AI-powered chatbot designed to answer questions about my background, projects, and experience. It is customized to respond in the character of the Sorting Hat.
         </p>
         <div className="mt-6">
           <Button asChild variant="secondary">

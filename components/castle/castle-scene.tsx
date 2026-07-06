@@ -15,6 +15,7 @@ import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import type { NavItem } from "@/lib/types";
 import { readCastleTheme, type CastleTheme } from "@/lib/tokens";
 import { useEnterReveal, registerFlyToTower } from "@/components/page-reveal";
+import { HatSilhouette } from "@/components/sorting-hat/hat-icon";
 
 type Vec3 = [number, number, number];
 
@@ -45,6 +46,8 @@ const WATER = "#0b1734";
 const WATER_Y = -3.2;
 const LEFT_TOP = 0.7;
 const RIGHT_TOP = 0.2;
+/** How far each tower label floats ABOVE its window (world units). */
+const LABEL_LIFT = 0.75;
 
 /* Interactive nav towers (Projects/About/Resume). Index 0 (Great Hall) is a
    building, handled separately; Contact lives in the header nav. Each tower
@@ -75,7 +78,9 @@ const STRUCTURE_BY_ROUTE: Record<string, { c: Vec3; win: Vec3; cam: Vec3 }> = {
   // Towers — a mid window on the front face (y = height*0.5, z = radius*0.92).
   // Ask the Sorting Hat = the big tower at [-4.5]; Library = the tower at [2.4].
   "/sorting-hat": { c: [-4.5, LEFT_TOP, -0.3], win: [0, 4.8, 0.5], cam: [0, 0, 1.08] },
-  "/about": { c: [5.6, RIGHT_TOP, 1.4], win: [0, 1.7, 0.74], cam: [0, 0, 0.14] },
+  // Potions — enter the TOP window (height 3.4 × 0.82 ≈ 2.79). win[1] picks the
+  // window row; use 3.4 × {0.34,0.5,0.66,0.82} = {1.16,1.7,2.24,2.79} for the others.
+  "/about": { c: [5.6, RIGHT_TOP, 1.4], win: [0, 2.79, 0.7], cam: [0, 0, 0.14] },
   "/projects": { c: [2.4, RIGHT_TOP, 0.7], win: [0, 3.9, 0.57], cam: [0, 0, 0.14] },
   // Owlery — a tall slim tower behind/left of About; single window high under the roof.
   "/contact": { c: [5.0, RIGHT_TOP, -0.5], win: [0, 5.87, 0.47], cam: [0, 0, 0.14] },
@@ -132,7 +137,7 @@ const TOUR: { pos: THREE.Vector3; look: THREE.Vector3 }[] = [
   frontPose(2.4, RIGHT_TOP, 11, 9, 5.2), // Resume — out a little
   frontPose(5.0, RIGHT_TOP, 0.5, 11.5, 3.2), // Contact — zoom in
   frontPose(5.0, RIGHT_TOP, 8, 6.9, 8.0), // Contact — out a little
-  frontPose(5.6, RIGHT_TOP, 2, 3.4, 2.8), // About — zoom in
+  frontPose(5.6, RIGHT_TOP, 2, 5.6, 2.8), // About — zoom in
   { pos: WIDE_POS.clone(), look: WIDE_LOOK.clone() }, // back to original POV
 ];
 
@@ -1243,11 +1248,11 @@ function GreatHallBuilding({
   const entry = STRUCTURE_BY_ROUTE[item.href];
   const labelPos: Vec3 = entry
     ? [
-        entry.c[0] + entry.win[0] - position[0] - 1.2,
-        entry.c[1] + entry.win[1] - position[1] + 0.6,
+        entry.c[0] + entry.win[0] - position[0],
+        entry.c[1] + entry.win[1] - position[1] + LABEL_LIFT,
         entry.c[2] + entry.win[2] - position[2] + 0.2,
       ]
-    : [-1.6, height * 0.8, depth / 2 + 0.2];
+    : [0, height * 0.8 + LABEL_LIFT, depth / 2 + 0.2];
 
   return (
     <group
@@ -1533,13 +1538,15 @@ function Tower({
   // Label sits beside the window the camera flies into, on its left (camera POV).
   // STRUCTURE_BY_ROUTE.win is an offset from its `c`; re-base into tower-local.
   const entry = STRUCTURE_BY_ROUTE[item.href];
+  // Label sits ON TOP of the window the camera flies into (centred on it in X,
+  // raised in Y by LABEL_LIFT). Raise/lower LABEL_LIFT to move it up/down.
   const labelPos: Vec3 = entry
     ? [
-        entry.c[0] + entry.win[0] - position[0] - (radius + 0.8),
-        entry.c[1] + entry.win[1] - position[1],
+        entry.c[0] + entry.win[0] - position[0],
+        entry.c[1] + entry.win[1] - position[1] + LABEL_LIFT,
         entry.c[2] + entry.win[2] - position[2] - 0.2,
       ]
-    : [-(radius + 0.6), height * 0.7, radius + 0.2];
+    : [0, height * 0.7 + LABEL_LIFT, radius + 0.2];
 
   return (
     <group
@@ -1634,6 +1641,30 @@ function Tower({
           {item.tower}
         </button>
       </Html>
+
+      {/* Bright pulsing map indicator above the Sorting Hat tower's label. */}
+      {item.href === "/sorting-hat" && (
+        <Html
+          position={[labelPos[0], labelPos[1] + 1, labelPos[2]]}
+          center
+          distanceFactor={22}
+          zIndexRange={[40, 0]}
+        >
+          <button
+            type="button"
+            onClick={() => select()}
+            aria-label={`Enter ${item.tower}`}
+            className="pointer-events-auto relative grid size-6 place-items-center"
+          >
+            {/* pulsing ring */}
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#ffd54a] opacity-60 motion-reduce:animate-none" />
+            {/* solid pin with the Sorting Hat silhouette */}
+            <span className="relative grid size-6 place-items-center rounded-full bg-[#ffd54a] shadow-[0_0_18px_5px_rgba(255,213,74,0.8)] ring-2 ring-[#fff2b0]">
+              <HatSilhouette className="size-4 text-[#241a10]" />
+            </span>
+          </button>
+        </Html>
+      )}
     </group>
   );
 }
@@ -1690,7 +1721,7 @@ function Owlery({
   };
 
   // Label beside the high window the camera flies into, on its left (camera POV).
-  const labelPos: Vec3 = [-(radius + 0.9), height * winF, winLocalR + 0.2];
+  const labelPos: Vec3 = [0, height * winF + LABEL_LIFT, winLocalR + 0.2];
 
   return (
     <group

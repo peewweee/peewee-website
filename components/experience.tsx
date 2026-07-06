@@ -139,15 +139,43 @@ function RoleBlock({ role }: { role: Role }) {
 
 export function Experience() {
   const railRef = React.useRef<HTMLOListElement>(null);
+  const stopNodeRef = React.useRef<HTMLSpanElement>(null);
+  // The beam should travel only as far as the second node, not the whole rail.
+  // Measure that node's centre as a fraction of the rail height and cap the fill.
+  const [stopFrac, setStopFrac] = React.useState(1);
+
+  React.useEffect(() => {
+    const measure = () => {
+      const rail = railRef.current;
+      const node = stopNodeRef.current;
+      if (!rail || !node) return;
+      const railRect = rail.getBoundingClientRect();
+      if (railRect.height <= 0) return;
+      const nodeRect = node.getBoundingClientRect();
+      const y = nodeRect.top + nodeRect.height / 2 - railRect.top;
+      setStopFrac(Math.min(1, Math.max(0.02, y / railRect.height)));
+    };
+    measure();
+    const t = window.setTimeout(measure, 300); // re-measure after fonts/logos settle
+    window.addEventListener("resize", measure);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
   // Beam fills the rail as this timeline scrolls through the viewport centre, so
-  // its bright leading edge tracks the node you're currently on.
+  // its bright leading edge tracks the node you're currently on — but it stops at
+  // the second node (clamped past `stopFrac`).
   const { scrollYProgress } = useScroll({
     target: railRef,
     offset: ["start center", "end center"],
   });
-  const beamHeight = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
-  // Fade the beam out as it reaches the end of the rail.
-  const beamOpacity = useTransform(scrollYProgress, [0, 0.82, 1], [1, 1, 0]);
+  const beamHeight = useTransform(
+    scrollYProgress,
+    [0, stopFrac],
+    ["0%", `${stopFrac * 90}%`],
+  );
 
   return (
     <section aria-labelledby="experience-heading">
@@ -166,13 +194,16 @@ export function Experience() {
           <span className="pointer-events-none absolute left-0 top-0 h-full w-px bg-gradient-to-b from-transparent via-border to-transparent" />
           {/* beam: bright fill from the top down to the current scroll position */}
           <motion.span
-            style={{ height: beamHeight, opacity: beamOpacity }}
+            style={{ height: beamHeight }}
             className="pointer-events-none absolute left-0 top-0 w-px bg-gradient-to-b from-transparent via-accent to-accent-text"
           />
 
           {WORK.map((c, i) => (
             <li key={i} className="relative">
-              <span className="absolute -left-6 top-2.5 size-3 -translate-x-1/2 rounded-full bg-accent shadow-[0_0_10px_2px_rgba(var(--accent-glow),0.65)]" />
+              <span
+                ref={i === 1 ? stopNodeRef : null}
+                className="absolute -left-6 top-2.5 size-3 -translate-x-1/2 rounded-full bg-accent shadow-[0_0_10px_2px_rgba(var(--accent-glow),0.65)]"
+              />
               <div className="flex items-center gap-2.5">
                 <Logo src={c.logo} />
                 <p className="text-base font-semibold text-accent-text">{c.company}</p>

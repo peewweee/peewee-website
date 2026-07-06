@@ -164,12 +164,32 @@ const config: Config = {
           "0%, 80%, 100%": { opacity: "0.25", transform: "translateY(0)" },
           "40%": { opacity: "1", transform: "translateY(-3px)" },
         },
+        hatSway: {
+          "0%, 100%": { transform: "rotate(-4deg)" },
+          "50%": { transform: "rotate(4deg)" },
+        },
+        hatTalk: {
+          "0%, 100%": { transform: "scaleY(1)" },
+          "50%": { transform: "scaleY(0.4) translateY(1px)" },
+        },
+        hatBlink: {
+          "0%, 90%, 100%": { transform: "scaleY(1)" },
+          "95%": { transform: "scaleY(0.08)" },
+        },
+        hatGlow: {
+          "0%, 100%": { opacity: "1", filter: "brightness(1)" },
+          "43%": { opacity: "0.78", filter: "brightness(1.18)" },
+        },
       },
       animation: {
         float: "float 6s var(--ease-float) infinite",
         candle: "candle 4s var(--ease-candle) infinite",
         unfurl: "unfurl var(--dur-unfurl) var(--ease-out-soft) both",
         think: "think 1.4s var(--ease-candle) infinite",
+        "hat-sway": "hatSway 3.6s ease-in-out infinite",
+        "hat-talk": "hatTalk 2.4s ease-in-out infinite",
+        "hat-blink": "hatBlink 4.2s infinite",
+        "hat-glow": "hatGlow 2.6s infinite",
       },
     },
   },

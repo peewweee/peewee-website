@@ -8,9 +8,11 @@ interactive 3D castle that serves as the navigation.
 > **Guiding principle:** the theme is a wrapper; the substance is real. Projects, resume,
 > and contact stay fast, scannable, and accessible — a recruiter has ~30 seconds.
 
-**Phases 0–2 are complete:** the shippable content site **and** the interactive 3D castle
-navigation hub (React Three Fiber). The live AI Hat (Phase 3) and atmosphere effects
-(Phase 4) are scaffolded as clean, typed **stubs**.
+**Phases 0–2 plus a content pass are live:** the shippable content site, the interactive 3D
+castle navigation hub (React Three Fiber), a fleshed-out **Great Hall** (bio, Tech Stack,
+Experience, and a 3D "Daily Prophet" featured section), and **six real projects** that link
+out to their live sites. The AI Hat now lives inline on its own page; its backend (Phase 3)
+and the atmosphere effects (Phase 4) remain clean, typed **stubs**.
 
 ---
 
@@ -31,12 +33,12 @@ npm run typecheck    # tsc --noEmit
 npm run format       # Prettier (write)
 ```
 
-No API keys are required to run Phase 1. The AI and email features are stubbed (see
+No API keys are required to run the site locally. The AI and email features are stubbed (see
 [Environment](#environment-variables)).
 
 ---
 
-## What's done (Phase 0 + Phase 1)
+## What's done (Phases 0–2 + content)
 
 **Phase 0 — scaffold**
 
@@ -56,12 +58,13 @@ No API keys are required to run Phase 1. The AI and email features are stubbed (
 
 **Phase 1 — content site (ships first)**
 
-- Routes: `/` (castle nav), `/great-hall` (home), `/sorting-hat`, `/projects`,
-  `/projects/[slug]`, `/about`, `/resume`, `/contact`, plus a themed 404.
+- Routes: `/` (castle nav), `/great-hall` (home), `/sorting-hat`, `/projects`, `/about`,
+  `/resume`, `/contact`, plus a themed 404. (The per-project `/projects/[slug]` pages were
+  removed — cards link straight to the live sites.)
 - **Contentlayer** ([`contentlayer2`](https://github.com/timlrx/contentlayer2)) MDX for the
-  four case studies in [`content/projects`](content/projects): Aura, Solar-Connect, Arduino
-  Day PH 2025, and a 4th UI/UX placeholder. Each has title, themed framing, problem, role,
-  stack, outcome, and links.
+  **six** projects in [`content/projects`](content/projects): Aura, CrowdFlow, Solar Connect,
+  Balai ni Juan, Arduino Day PH 2025, and Sparkfest. Frontmatter carries `title`, `category`,
+  `cover`, `link`, `stack`, `status`, and `order`; each card links straight to its live site.
 - The **"owl post"** contact form with client-side validation + a honeypot, posting to
   [`/api/contact`](app/api/contact/route.ts) (Resend stubbed until a key is added).
 - UI components matching the style guide: **spellbook cards**, buttons (gold "wax-seal"
@@ -80,17 +83,34 @@ No API keys are required to run Phase 1. The AI and email features are stubbed (
 - **Token-driven**: the scene reads the design tokens at runtime
   ([`lib/tokens.ts`](lib/tokens.ts)) so gold/glow/night-sky colors match the DOM and follow
   `data-house`.
+- **Scroll-driven tour + window transitions**: the home castle runs a looping camera tour
+  (wheel on desktop, touch on mobile — the page itself doesn't scroll); choosing a tower
+  **flies into a lit window** and dissolves through a soft iris/portal reveal, and a
+  **"back to castle"** header control returns you to the hub.
 - **Lazy + accessible**: the three.js bundle is code-split and loaded only on eligible
-  devices (desktop pointer + WebGL + motion allowed + opt-in), after first paint — it is
-  **not** in the home page's First Load JS. The 2D castle + the always-present accessible
-  tower nav cover mobile / weak GPU / no-WebGL / reduced-motion, and a **2D/3D toggle** +
-  error boundary let anyone fall back.
+  devices (WebGL + motion allowed), after first paint — **not** in the home page's First
+  Load JS. The header tower nav is the always-present keyboard/accessible path; a 2D castle
+  silhouette + error boundary cover no-WebGL / reduced-motion. (The old manual 2D/3D toggle
+  was removed; mobile now runs the 3D tour.)
+
+**Great Hall, Daily Prophet & projects (latest content pass)**
+
+- The **Great Hall** (`/great-hall`) gained a bio intro, a **Tech Stack** section, an
+  **Experience** section (work + leadership), and a **3D "Daily Prophet"** featured section:
+  two scroll-driven newspapers (Aura + CrowdFlow) that fan open on scroll and re-fold on
+  scroll-up, with a static both-papers-readable fallback for reduced-motion / no-WebGL.
+- **Projects** is a 2-column grid of spellbook cards — cover image background with a soft
+  bottom fade, full stack + description — each linking out to its **live site** (new tab).
+- The **Sorting Hat** moved inline onto `/sorting-hat`; the floating "Ask the Hat" button was
+  removed from every page.
+- The **footer** stacks nav + contacts vertically with a **Resume** column, and the **"Behind
+  the Magic"** section (on About) was slimmed to concise professional copy.
 
 ### Scaffolded stubs (clean typed interfaces + TODOs)
 
 | Area                  | Stub                                                    | Notes                                                                                 |
 | --------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Sorting Hat (Phase 3) | [`SortingHat`](components/sorting-hat/sorting-hat.tsx)  | Chat-panel UI with a "thinking" state + citation chips; calls the stubbed `/api/ask`. |
+| Sorting Hat (Phase 3) | [`SortingHat`](components/sorting-hat/sorting-hat.tsx)  | Inline chat on `/sorting-hat` (floating button removed) with a "thinking" state + citation chips; calls the stubbed `/api/ask`. |
 | RAG (Phase 3)         | [`lib/rag`](lib/rag)                                    | Typed `ingest` / `retrieve` / `ask` stubs.                                            |
 | Ask API (Phase 3)     | [`/api/ask`](app/api/ask/route.ts)                      | Validates input, returns a stubbed grounded answer + citations.                       |
 | Music (Phase 4)       | [`MusicToggle`](components/atmosphere/music-toggle.tsx) | Default **OFF**, persisted, reduced-motion aware. No audio yet.                       |
@@ -105,21 +125,24 @@ app/
   api/
     ask/route.ts          # Sorting Hat endpoint (stub)
     contact/route.ts      # Owl post endpoint (Resend stub + honeypot)
-  about/ contact/ projects/ resume/   # routes
-  projects/[slug]/        # dynamic case-study pages (SSG)
+  great-hall/ sorting-hat/ projects/ about/ resume/ contact/   # routes
   fonts.ts                # next/font setup
   globals.css             # design tokens + house themes + base styles
   layout.tsx  page.tsx  not-found.tsx
 components/
-  ui/                     # button, input, textarea, label, badge, card, dialog
-  atmosphere/             # music-toggle, wand-cursor (Phase 4 stubs)
-  castle/                 # castle-hub (orchestrator) + castle-scene (R3F) + castle-fallback (2D)
-  sorting-hat/            # sorting-hat chat UI (Phase 3 stub)
-  site-header.tsx  site-footer.tsx  spellbook-card.tsx  page-header.tsx  mdx-content.tsx
-content/projects/         # MDX case studies
+  ui/                     # button, input, textarea, label, badge, card, dialog, border-beam
+  atmosphere/             # atmosphere wrapper + music-toggle + wand-cursor (Phase 4 stubs)
+  castle/                 # castle-hub + castle-scene (R3F) + castle-fallback (2D)
+  featured-prophet.tsx newspaper.tsx prophet-scene.tsx   # 3D "Daily Prophet" featured section
+  tech-stack.tsx experience.tsx                          # Great Hall sections
+  portal-transition.tsx page-reveal.tsx back-to-castle.tsx  # castle -> page window transitions
+  sorting-hat/            # inline Sorting Hat chat (Phase 3 stub)
+  site-header.tsx site-footer.tsx conditional-footer.tsx spellbook-card.tsx page-header.tsx mdx-content.tsx
+content/projects/         # six MDX projects (link out to live sites)
 lib/
   rag/                    # ingest / retrieve / ask (Phase 3 stubs) + types
-  site.ts  houses.ts  projects.ts  types.ts  utils.ts  use-preference.ts  tokens.ts
+  site.ts houses.ts projects.ts types.ts utils.ts use-preference.ts tokens.ts
+public/projects/          # six cover images
 docs/                     # PROJECT_DOCUMENTATION.md + Wizarding Design System.html (source of truth)
 contentlayer.config.ts  tailwind.config.ts  components.json
 ```

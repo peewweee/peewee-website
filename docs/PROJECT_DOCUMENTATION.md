@@ -7,7 +7,7 @@
 | **Owner**         | Phoebe Rhone Gangoso — graduating BS Computer Engineering, PUP Manila                                                                                                                                            |
 | **Career target** | AI Engineering roles                                                                                                                                                                                             |
 | **Domain**        | To be decided — skipped for now                                                                                                                                                                                  |
-| **Status**        | Build in progress — Phases 0–2 done (content site + 3D castle); Phase 3 (AI Hat) + Phase 4 (atmosphere) scaffolded as stubs                                                                                                                                                                          |
+| **Status**        | Build in progress — content site + 3D castle live; the Great Hall (bio, Tech Stack, Experience) and the 3D "Daily Prophet" featured section are built; six real projects link out to live sites. The AI Hat is inline (Phase 3 backend stubbed); atmosphere (Phase 4) stubbed.                                                                                                                                                                          |
 | **This document** | The brief for the design phase and the build. Covers concept, audience, sitemap, features, tech stack, architecture, plan, and design direction. A ready-to-paste prompt for the design system is in Appendix A. |
 
 > **Note on the name:** the owner name above is taken from the resume (Phoebe Rhone Gangoso). Swap it everywhere if the site should carry a different name. The site config also uses the nickname **"Peewee"** and the on-site role label **"Software & AI Developer."**
@@ -44,13 +44,13 @@ The landing page (`/`) **is the 3D castle** — a full-screen navigation hub. Ea
 
 | Tower (on the castle) | Section | Route |
 | --- | --- | --- |
-| **Great Hall** | Home / welcome | `/great-hall` |
-| **Ask the Sorting Hat** | The AI Hat | `/sorting-hat` |
-| **Library** | Projects (×4 case studies) | `/projects` |
+| **Great Hall** | Home / welcome — bio, Tech Stack, Experience & the "Daily Prophet" featured projects | `/great-hall` |
+| **Ask the Sorting Hat** | The AI Hat — inline chat | `/sorting-hat` |
+| **Library** | Projects — six cards linking out to live sites | `/projects` |
 | **Owlery** | Contact ("owl post") | `/contact` |
-| **Potions** | About | `/about` |
+| **Potions** | About + "Behind the Magic" | `/about` |
 
-`/resume` is a downloadable "acceptance letter" page, reached from the header/About rather than as a primary tower. Global on every page: the **music toggle** and the **wand cursor** (desktop).
+`/resume` is an "acceptance letter" page linked from the header/footer rather than a primary tower. Global on every page: the **music toggle** and the **wand cursor** (desktop).
 
 ---
 
@@ -64,15 +64,15 @@ The landing page (`/`) is a full-screen, low-poly night-time castle — and it *
 - The **header nav is the always-present accessible / keyboard path**; the castle is an enhancement, never the only way to navigate. A 2D castle **silhouette + tower list** covers no-WebGL and reduced-motion. _(The earlier manual 2D/3D toggle was removed, and mobile now gets the 3D tour too.)_
 - The five towers: **Great Hall** (home), **Ask the Sorting Hat**, **Library** (projects), **Owlery** (contact), **Potions** (about).
 
-### 4.2 The Sorting Hat (AI) — three modes
+### 4.2 The Sorting Hat (AI) — the AI showcase
 
 One character, three demos, telling a complete AI-engineering story:
 
 1. **Ask the Hat (RAG).** Visitors ask about me; the Hat answers **only** from my resume + project write-ups, with source citations (e.g., "from: Aura"). Demonstrates retrieval-augmented generation, grounding, and prompt engineering. _This is the flagship._
 2. **Get Sorted (classification).** The Hat asks a few quick questions (or reads a sentence the visitor types) and sorts them into a Hogwarts house; the site accent then shifts to that house. Demonstrates LLM classification and structured output. Light, fun, shareable.
-3. **Behind the Magic (transparency).** A short, visual "how it works" panel showing the real pipeline (embeddings → vector search → LLM, plus caching and rate-limiting). This is what turns "cute chatbot" into "this person can ship AI."
+3. **Behind the Magic (transparency).** A short "how it works" summary of the real pipeline (embeddings → vector search → LLM, plus caching and rate-limiting) — what turns "cute chatbot" into "this person can ship AI." _Currently a slimmed static section on the **About** page; the live, data-driven panel arrives with Phase 3._
 
-**One panel, two modes.** The Hat has its own tower and route (**`/sorting-hat`**, "Ask the Sorting Hat") and is a single panel with two modes. It opens with two quick-reply chips — _"Ask about Phoebe"_ and _"Sort me into a house"_ — and the visitor can switch anytime; _Behind the Magic_ is a small expandable link in the same panel. The two chat modes route to two different backends (see §6): **Ask → `/api/ask`** (RAG) and **Sort → `/api/sort`** (classification). Intents are explicit chips rather than auto-detected — clearer for the visitor, and each request routes cleanly to the right endpoint.
+**Inline on its own page, two modes.** The Hat is a full inline chat on its own route (**`/sorting-hat`**, "Ask the Sorting Hat") — the old floating "Ask the Hat" button was removed from every page. It's one panel with two modes, opening with two quick-reply chips — _"Ask about Phoebe"_ and _"Sort me into a house"_ — and the visitor can switch anytime. The two modes route to two different backends (see §6): **Ask → `/api/ask`** (RAG) and **Sort → `/api/sort`** (classification). Intents are explicit chips rather than auto-detected — clearer for the visitor, and each request routes cleanly to the right endpoint.
 
 **Guardrails.** Answers are strictly grounded in my data; the Hat politely refuses off-topic questions; the API key stays server-side; a spend cap + caching + rate-limiting protect the public endpoint.
 
@@ -94,16 +94,24 @@ The pointer becomes a wand with a subtle sparkle / ember trail; hovering an inte
 - **Respects "reduced motion"** (no trail / minimal) and offers an **off switch** to revert to the normal cursor for accessibility.
 - Kept **lightweight** — capped particle count, driven by `requestAnimationFrame`.
 
-### 4.5 The four projects (themed case studies)
+### 4.5 Projects — the "Library" (six projects, linking to live work)
 
-Light theming on the card; the page itself is a **real case study** — problem, my role, stack, outcome, links/demo. Theme decorates, it never hides the substance.
+The Projects page ("The Library") is a **2-column grid of "spellbook" cards**. Each card uses the project's cover image as its background with a soft multi-stop bottom fade, shows the **full stack and description**, and **links straight to the live site in a new tab** — the old per-project `/projects/[slug]` case-study pages were removed. Content lives as MDX frontmatter in `content/projects/*.mdx`; the schema carries `category`, `cover`, `link`, `stack`, `status`, and `order`.
 
-| Project                                | Themed framing                                            | What it is                                                                                                                                                              |
-| -------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Aura**                               | _Divination / crystal ball_ — "see your financial future" | AI financial-intelligence web app. Java 21, Spring Boot, PostgreSQL, Redis, Gemini API. Turns unstructured spending input into structured data + personalized insights. |
-| **Solar-Connect**                      | _Lumos_ — light / solar                                   | Full-stack web app for a solar-powered charging-station thesis, integrated with the embedded firmware.                                                                  |
-| **Arduino Day PH 2025 Website**        | _Room of Requirement_ — design gallery                    | UI/UX lead: led design volunteers, collaborated with web dev to design the official event site.                                                                         |
-| **[Second UI/UX project — title TBD]** | _Room of Requirement_ — design gallery                    | Add final title, role, and links.                                                                                                                                       |
+| Project | Category | Live link | Stack |
+| --- | --- | --- | --- |
+| **Aura — AI-Powered Financial Intelligence** | AI · FinTech | aura-finance.me | Java, Spring Boot, PostgreSQL, Redis, Gemini API |
+| **CrowdFlow — Itinerary Planner** | AI | crowdflowph.vercel.app | Next.js, TypeScript, Tailwind, React, Leaflet, Gemini API, OpenWeather |
+| **Solar Connect** | Web App · IoT | solarconnect.live | Next.js, TypeScript, Tailwind, Supabase, OpenWeather |
+| **Balai ni Juan** | Web | balai-ni-juan.vercel.app | JavaScript, HTML, CSS |
+| **Arduino Day PH 2025** | UI/UX | github.com/peewweee/arduinodayph25 | Figma |
+| **Sparkfest** | UI/UX | sparkfest-2025.vercel.app | Figma |
+
+### 4.6 The Great Hall page & the 3D "Daily Prophet"
+
+The **Great Hall** (`/great-hall`, the "Home" nav item) is the welcome/landing content: a short bio intro with **View projects** / **Ask the Sorting Hat** buttons, a **Tech Stack** section (grouped skills + icons), an **Experience** section (work history + leadership), and the featured-projects section below.
+
+**Featured projects — a "Daily Prophet" front page in 3D.** Two scroll-driven 3D newspapers (**Aura** and **CrowdFlow**) under a blackletter masthead: they **fan open as the section scrolls into view and re-fold on scroll-up**, finishing as they reach center. Tunable knobs control size, lift, spread/overlap, and tilt. Reduced-motion / no-WebGL visitors get a static, both-papers-readable layout; screen-reader users get real links (the papers are decorative). A **"Read more →"** link leads to the full Projects page.
 
 ---
 
@@ -327,26 +335,4 @@ DESIGN A COMPLETE, COHESIVE DESIGN SYSTEM. DELIVER:
    primary, secondary, ghost), inputs and the "owl post" contact form, project
    "spellbook" cards, the Sorting Hat chat panel (including a "the Hat is thinking…"
    state and citation chips), 3D tower/nav hotspot labels, the primary navigation plus
-   an accessible fallback text menu, badges/tags, dialog/modal, the background-music
-   toggle, the wand cursor (idle, moving-with-sparkle-trail, hover/"cast", and a
-   disabled/normal-cursor fallback), the "Behind the Magic" architecture panel, and
-   loading/empty/error states.
-
-7. Accessibility rules — WCAG 2.1 AA: contrast, visible focus states, full keyboard
-   navigation, reduced-motion behavior, screen-reader structure, an accessible
-   alternative to the 3D castle, music default-off, and a wand-cursor off switch
-   (disabled on touch).
-
-8. Responsive guidance — desktop delivers the 3D "wow"; mobile degrades to a clean
-   themed 2D layout (static castle hero, normal nav, no custom cursor). Define
-   breakpoints and how key components adapt.
-
-OUTPUT FORMAT
-(a) the design tokens as CSS variables AND a Tailwind theme config snippet;
-(b) concise component specs as above; and
-(c) a single self-contained HTML style-guide page that showcases the palette,
-typography, and the core components in their states, so I can see the system applied.
-
-Keep all assets original and wizarding-inspired — no trademarked crests, official logos,
-or the film score.
-```
+   an accessible fallback
