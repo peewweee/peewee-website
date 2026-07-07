@@ -5,7 +5,7 @@
  *   npm run ingest
  *
  * Reads the corpus (project MDX + content/data.md + content/facts.md), chunks
- * it, embeds each chunk with Gemini (text-embedding-004), and writes the committed
+ * it, embeds each chunk with Gemini (gemini-embedding-001), and writes the committed
  * index to lib/rag/index.json. Re-run this whenever you edit any corpus file.
  *
  * Needs GEMINI_API_KEY in .env.local (free Google AI Studio key). Server-side only.

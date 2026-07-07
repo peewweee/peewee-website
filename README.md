@@ -63,8 +63,8 @@ No API keys are required to run the site locally. The AI and email features are 
   `/resume`, `/contact`, plus a themed 404. (The per-project `/projects/[slug]` pages were
   removed — cards link straight to the live sites.)
 - **Contentlayer** ([`contentlayer2`](https://github.com/timlrx/contentlayer2)) MDX for the
-  **six** projects in [`content/projects`](content/projects): Aura, CrowdFlow, Solar Connect,
-  Balai ni Juan, Arduino Day PH 2025, and Sparkfest. Frontmatter carries `title`, `category`,
+  **seven** projects in [`content/projects`](content/projects): Aura, CrowdFlow, Solar Connect,
+  Balai ni Juan, Arduino Day PH 2025, Sparkfest, and FairySplit (WIP). Frontmatter carries `title`, `category`,
   `cover`, `link`, `stack`, `status`, and `order`; each card links straight to its live site.
 - The **"owl post"** contact form posts to [`/api/contact`](app/api/contact/route.ts) with
   server-side Zod validation, an MX domain check, a honeypot, Cloudflare Turnstile, and a
@@ -125,8 +125,8 @@ No API keys are required to run the site locally. The AI and email features are 
 ```
 app/
   api/
-    ask/route.ts          # Sorting Hat endpoint (stub)
-    contact/route.ts      # Owl post endpoint (Resend stub + honeypot)
+    ask/route.ts          # Sorting Hat RAG endpoint (live)
+    contact/route.ts      # Owl post (Zod+MX+honeypot+Turnstile+rate-limit+Resend)
   great-hall/ sorting-hat/ projects/ about/ resume/ contact/   # routes
   fonts.ts                # next/font setup
   globals.css             # design tokens + house themes + base styles
@@ -138,13 +138,13 @@ components/
   featured-prophet.tsx newspaper.tsx prophet-scene.tsx   # 3D "Daily Prophet" featured section
   tech-stack.tsx experience.tsx                          # Great Hall sections
   portal-transition.tsx page-reveal.tsx back-to-castle.tsx  # castle -> page window transitions
-  sorting-hat/            # inline Sorting Hat chat (Phase 3 stub)
+  sorting-hat/            # inline Sorting Hat chat (live RAG)
   site-header.tsx site-footer.tsx conditional-footer.tsx spellbook-card.tsx page-header.tsx mdx-content.tsx
-content/projects/         # six MDX projects (link out to live sites)
+content/projects/         # seven MDX projects (six live + FairySplit WIP)
 lib/
-  rag/                    # ingest / retrieve / ask (Phase 3 stubs) + types
+  rag/                    # ingest / retrieve / ask (live) + local index.json
   site.ts houses.ts projects.ts types.ts utils.ts use-preference.ts tokens.ts
-public/projects/          # six cover images
+public/projects/          # seven cover images
 docs/                     # PROJECT_DOCUMENTATION.md + Wizarding Design System.html (source of truth)
 contentlayer.config.ts  tailwind.config.ts  components.json
 ```
@@ -299,7 +299,7 @@ richer model, drop an original Draco-compressed glTF into the scene (swap the me
 and fallback all stay as-is.
 
 **Phase 3 — the Hat (AI).** Add `GEMINI_API_KEY` + Upstash. Implement
-[`lib/rag`](lib/rag): ingest content → Upstash Vector; `/api/ask` retrieval + grounded
+[`lib/rag`](lib/rag): ✅ already done — local `index.json` + `/api/ask` retrieval + grounded
 Gemini answer with **streaming** (Vercel AI SDK) and citations; add Redis **rate-limit +
 cache**. Then build "Get Sorted" (classification → `data-house` swap) and "Behind the
 Magic".

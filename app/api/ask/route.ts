@@ -42,6 +42,24 @@ function citationsHeader(citations: Citation[]): string {
   return encodeURIComponent(JSON.stringify(citations));
 }
 
+/** Extract a readable detail string from an error (incl. AI SDK API errors). */
+function errDetail(err: unknown): string {
+  if (err && typeof err === "object") {
+    const e = err as Record<string, unknown>;
+    return [
+      e.name,
+      e.statusCode,
+      e.message,
+      typeof e.responseBody === "string" ? e.responseBody : undefined,
+    ]
+      .filter(Boolean)
+      .map(String)
+      .join(" | ")
+      .slice(0, 600);
+  }
+  return String(err).slice(0, 600);
+}
+
 /** A non-streamed text reply (cache hits, in-character notices). */
 function textReply(
   text: string,
@@ -103,19 +121,26 @@ export async function POST(req: Request) {
   //    are logged so Vercel's runtime logs surface any Gemini issue.
   const citations = citationsFromChunks(chunks);
   let answer = "";
+  let genErr = "";
   try {
     answer = await generateAnswer({ question, chunks, house });
   } catch (err) {
-    console.error("[hat] generation failed (attempt 1):", err);
+    genErr = errDetail(err);
+    console.error("[hat] generation failed (attempt 1):", genErr);
     try {
       await new Promise((r) => setTimeout(r, 800));
       answer = await generateAnswer({ question, chunks, house });
     } catch (err2) {
-      console.error("[hat] generation failed (attempt 2):", err2);
+      genErr = errDetail(err2);
+      console.error("[hat] generation failed (attempt 2):", genErr);
     }
   }
 
-  if (!answer) return textReply(HAT.pondering, [], { cookie });
+  if (!answer) {
+    const res = textReply(HAT.pondering, [], { cookie });
+    if (genErr) res.headers.set("X-Hat-Error", encodeURIComponent(genErr));
+    return res;
+  }
 
   await setCachedAnswer(question, { answer, citations });
   return textReply(answer, citations, { cookie });

@@ -7,7 +7,7 @@
 | **Owner**         | Phoebe Rhone Gangoso — graduating BS Computer Engineering, PUP Manila                                                                                                                                            |
 | **Career target** | AI Engineering roles                                                                                                                                                                                             |
 | **Domain**        | To be decided — skipped for now                                                                                                                                                                                  |
-| **Status**        | Build in progress — content site + 3D castle live and exceeding the original plan; the Great Hall (bio, Tech Stack, Experience) and the 3D "Daily Prophet" featured section are built; **seven** projects on the Projects page (six live, FairySplit WIP). **Phase 3 (AI Hat) + Phase 4 (atmosphere) are still stubs** — Ask-the-Hat, Get Sorted, contact email, and music aren’t wired yet, and `resume.pdf` is missing (see §12).                                                                                                                                                                          |
+| **Status**        | Build in progress — content site + 3D castle live and exceeding the original plan; the Great Hall (bio, Tech Stack, Experience) and the 3D "Daily Prophet" featured section are built; **seven** projects on the Projects page (six live, FairySplit WIP). **Phase 3 is partly delivered:** the Ask-the-Hat RAG chat and the hardened contact form are **live**; **Get Sorted (`/api/sort`) and the live "Behind the Magic" panel remain**, and Phase 4 (atmosphere) is still stubbed. ⚠ `lib/rag/index.json` needs a re-ingest (`npm run ingest`) and `resume.pdf` is missing — see §12.                                                                                                                                                                          |
 | **This document** | The brief for the design phase and the build. Covers concept, audience, sitemap, features, tech stack, architecture, plan, and design direction. A ready-to-paste prompt for the design system is in Appendix A. |
 
 > **Note on the name:** the owner name above is taken from the resume (Phoebe Rhone Gangoso). Swap it everywhere if the site should carry a different name. The site config also uses the nickname **"Peewee"** and the on-site role label **"Software & AI Developer."**
@@ -76,7 +76,7 @@ One character, three demos, telling a complete AI-engineering story:
 
 **Guardrails.** Answers are strictly grounded in my data; the Hat politely refuses off-topic questions; the API key stays server-side; a spend cap + caching + rate-limiting protect the public endpoint.
 
-> **Build status (Phase 3 — not yet wired):** `/api/ask` returns a placeholder answer (no Gemini / Upstash Vector), and there is **no `/api/sort`** yet, so _Get Sorted_ never fires. See §12.
+> **Build status:** _Ask the Hat_ is **live** — `/api/ask` retrieves over a committed local index and streams a grounded Gemini answer with citations. _Get Sorted_ isn't built yet (**no `/api/sort`**; `data-house` stays `neutral`). See §12.
 
 ### 4.3 Background music (wizarding ambience)
 
@@ -138,7 +138,7 @@ The **Great Hall** (`/great-hall`, the "Home" nav item) is the welcome/landing c
 
 - **Vercel AI SDK** — one provider-agnostic interface with token streaming.
 - **Google Gemini Flash-Lite** — generates answers **and** provides embeddings for retrieval, from a single key.
-- **Upstash Vector** — serverless vector database; the index is built once from my resume + project notes.
+- **Local embedded index** (`lib/rag/index.json`) — Gemini embeddings committed to the repo and ranked in-memory by cosine similarity; **no vector DB**. Rebuilt by `npm run ingest`.
 - **Upstash Redis + @upstash/ratelimit** — caching and per-visitor rate limits to protect the public endpoint.
 
 **Atmosphere**
@@ -161,14 +161,14 @@ Everything runs on free tiers. The only possible spend is Gemini once the projec
 
 ## 6. Architecture — how the Hat answers & sorts
 
-**Build-time (once):** resume + project notes → chunked & embedded → stored in **Upstash Vector**.
+**Build-time (once):** résumé + project notes → chunked & embedded (`npm run ingest`) → committed to a **local index** (`lib/rag/index.json`). No vector DB.
 
 **Request-time (per question):**
 
 1. Visitor asks the Hat (Next.js + React Three Fiber UI).
 2. Request hits **`/api/ask`** — a Vercel serverless route where the API key stays hidden.
 3. **Upstash Redis** applies a per-visitor rate limit and serves a cached answer if one exists.
-4. The query is embedded and matched against **Upstash Vector** to retrieve the most relevant resume/project chunks.
+4. The query is embedded and matched by in-memory cosine similarity against the **local index** (`lib/rag/index.json`) to retrieve the most relevant chunks.
 5. **Gemini Flash-Lite** (via the Vercel AI SDK) composes an answer grounded **only** in the retrieved text.
 6. The answer streams back to the Hat with **source citations**.
 
@@ -183,7 +183,7 @@ _Optional simpler version:_ Get Sorted could instead be a fixed **client-side qu
 0. **Scaffold** — Next.js + TS + Tailwind, theme tokens (house colors), base layout, deploy a "hello world" to Vercel on the domain.
 1. **Content site** — the four project pages, About, resume download, working contact form. _This alone is already a real portfolio._
 2. **3D nav hub** — source + optimize the castle model, build the r3f scene, glowing clickable towers → routes, camera transitions, 2D/mobile fallback + accessible menu.
-3. **The Hat** — ingest content → Upstash Vector; `/api/ask` with retrieval + Gemini + streaming; rate-limit & cache; the Great Hall chat UI with citations; "Behind the Magic"; and "Get Sorted" via a separate `/api/sort` classifier.
+3. **The Hat** — ✅ ingest content → local `index.json` (`npm run ingest`); `/api/ask` with retrieval + Gemini streaming + citations; rate-limit & cache. **Remaining:** the live "Behind the Magic" panel and "Get Sorted" via a separate `/api/sort` classifier.
 4. **Atmosphere** — background music (Howler) + wand cursor, both with visible toggles and accessibility support.
 5. **Polish** — accessibility pass, performance budget (Lighthouse), reduced-motion variants, SEO / OG images, analytics.
 
@@ -286,7 +286,7 @@ The **design system owns everything in HTML/CSS** — components, the 2D fallbac
 
 ## 12. Current build status (vs. the plan)
 
-_Phase 1 (content site) and Phase 2 (3D castle) are done and **exceed** the original plan. Phase 3 (the AI Hat) and Phase 4 (atmosphere) are still **stubs**._
+_Phases 1–2 are done and exceed the plan. **Phase 3 is partly delivered:** the Ask-the-Hat RAG chat and the hardened contact form are live; **Get Sorted and the live "Behind the Magic" panel remain.** Phase 4 (atmosphere) is still stubbed. ⚠ Immediate: `lib/rag/index.json` is truncated/stale — regenerate it with `npm run ingest`, or `next build` / typecheck will fail._
 
 **Changed from the plan**
 
@@ -300,13 +300,20 @@ _Phase 1 (content site) and Phase 2 (3D castle) are done and **exceed** the orig
 
 - The 3D "Daily Prophet" scroll-driven newspapers; castle **tower labels + a pulsing Sorting-Hat map indicator**; the Experience **timeline beam**; a **7th project (FairySplit)**; and real LinkedIn / GitHub / Email / Facebook links.
 
-**Planned but not delivered / still stubbed**
+**Now delivered (since the plan was written)**
 
-- **RAG "Ask the Hat" is a stub.** `/api/ask` → `lib/rag/ask.ts` returns a canned "still being enchanted" reply — **no Gemini, no Upstash Vector**.
-- **"Get Sorted" isn't wired.** There's **no `/api/sort`** route, and `data-house` is stuck on `neutral`, so the house-accent swap never fires. — `app/layout.tsx`
-- **Contact email is stubbed.** `/api/contact` validates + honeypots + logs, but **Resend isn't installed/keyed**, so no mail is sent. — `app/api/contact/route.ts`
-- **Background music is a stub.** **Howler isn't installed and there's no audio file** — the toggle is UI-only. — `components/atmosphere/music-toggle.tsx`
-- **`resume.pdf` is missing.** The Resume page's "Download résumé (PDF)" points at `/resume.pdf`, but no such file exists in `public/`, so the download is currently **broken**. — `app/resume/page.tsx`
+- **Ask-the-Hat RAG is live.** `/api/ask` embeds the question, cosine-ranks the top chunks of a committed **local index** (`lib/rag/index.json` — no vector DB), and streams a grounded, in-character Gemini `gemini-2.5-flash-lite` answer with citations; order is **rate-limit → cache → model**. — `app/api/ask/route.ts`, `lib/rag/`
+- **Contact form is hardened + wired.** `/api/contact` runs server-side Zod, an MX check, a honeypot, Cloudflare Turnstile, a per-IP rate limit, HTML-escaping, and Resend delivery (sends once `RESEND_API_KEY` is set). — `app/api/contact/route.ts`
+
+**Still to do**
+
+- **⚠ Regenerate the RAG index (build blocker).** `lib/rag/index.json` is truncated (an interrupted ingest) and stale vs. `content/data.md` — run `npm run ingest` and commit it, or `next build` / typecheck fail. — `lib/rag/index.json`
+- **"Get Sorted" isn't built.** No `/api/sort` route or classifier; `data-house` is hardcoded `neutral`, so the house-accent swap never fires (the `lib/houses.ts` map is unused). — `app/layout.tsx`, `lib/houses.ts`
+- **"Behind the Magic" is static _and_ inaccurate.** The About-page copy still says vectors "live in Upstash Vector" — wrong; it's a local index. Fix the copy, then build the live panel. — `app/about/page.tsx`
+- **Background music is a stub.** Howler isn't installed and there's no audio file — the toggle is UI-only. — `components/atmosphere/music-toggle.tsx`
+- **Wand cursor is a preview.** A single glowing follower dot, not the planned sparkle/ember trail + "cast" flourish. — `components/atmosphere/wand-cursor.tsx`
+- **`resume.pdf` is missing.** The Resume page links `/resume.pdf`, but no such file exists in `public/`, so the download is broken. — `app/resume/page.tsx`
+- **Polish (Phase 5) not started.** No OG image, `app/sitemap.ts`, `app/robots.ts`, or web analytics; accessibility + Lighthouse pass pending; not yet deployed to Vercel (no domain).
 
 ---
 

@@ -61,12 +61,16 @@ export async function generateAnswer(opts: {
       ? `\n\n(The visitor has been sorted into ${opts.house}; you may lightly colour your tone to that house, but never change the facts.)`
       : "";
 
-  const { text } = await generateText({
+  const { text, finishReason } = await generateText({
     model: google(CHAT_MODEL),
     system: SYSTEM_PROMPT,
     prompt: `CONTEXT:\n${context}${houseNote}\n\nVisitor's question: ${opts.question}`,
     temperature: 0.6,
     maxOutputTokens: 260,
   });
-  return text.trim();
+  const trimmed = text.trim();
+  // Surface empty completions (safety block, length, etc.) as an error so the
+  // route logs/reports them rather than silently returning nothing.
+  if (!trimmed) throw new Error(`empty generation (finishReason=${finishReason ?? "unknown"})`);
+  return trimmed;
 }
