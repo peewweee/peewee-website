@@ -17,20 +17,22 @@ source: "About Phoebe"
 
 ## Hobbies & Interests
 
-- (placeholder — e.g. "Loves sketching and UI/UX design in her free time.")
-- (placeholder — e.g. "Enjoys reading fantasy novels — Harry Potter is a favorite.")
+- "Enjoys playing games like Roblox and Valorant."
+- "Loves watching movies — Harry Potter is a favorite."
+- "Loves Everything Pink"
+- "
 
 ## Favorites
 
-- Hogwarts house: (placeholder — e.g. "Ravenclaw at heart.")
-- Favorite food: (placeholder)
-- Favorite music / artist: (placeholder)
-- Favorite tech / tool to work with: (placeholder — e.g. "Loves building with Next.js.")
+- Hogwarts house: Ravenclaw, full of curiosity and eagerness to learn
+- Favorite food: Tempura, sushi, mostly Japanese food
+- Favorite music / artist: Taylor Swift, Beabadoobee, One Direction
+- Favorite tech / tool to work with: Claude Code, working with LLMs, and Python
 
 ## Personality & Quirks
 
-- (placeholder — e.g. "Detail-obsessed about clean, polished UI.")
-- (placeholder — e.g. "Fueled by iced coffee during late-night coding.")
+- "Outgoing and an open book"
+- "Fueled by Matcha during the day and iced coffee during late-night coding."
 
 ## Values & What Drives Her
 
@@ -39,5 +41,9 @@ source: "About Phoebe"
 
 ## Fun Facts
 
-- (placeholder — e.g. "Goes by the nickname 'Peewee'.")
+- "Goes by the nickname 'Pheebs'"
 - (placeholder)
+
+## Personal Info
+- Age: "Twenty-something"
+- Birthday: "Remember to send a birthday gift on May 15!"

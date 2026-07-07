@@ -66,8 +66,10 @@ No API keys are required to run the site locally. The AI and email features are 
   **six** projects in [`content/projects`](content/projects): Aura, CrowdFlow, Solar Connect,
   Balai ni Juan, Arduino Day PH 2025, and Sparkfest. Frontmatter carries `title`, `category`,
   `cover`, `link`, `stack`, `status`, and `order`; each card links straight to its live site.
-- The **"owl post"** contact form with client-side validation + a honeypot, posting to
-  [`/api/contact`](app/api/contact/route.ts) (Resend stubbed until a key is added).
+- The **"owl post"** contact form posts to [`/api/contact`](app/api/contact/route.ts) with
+  server-side Zod validation, an MX domain check, a honeypot, Cloudflare Turnstile, and a
+  per-IP rate limit; Resend delivers the message once a key is added. See
+  [Security & best practices](#security--best-practices).
 - UI components matching the style guide: **spellbook cards**, buttons (gold "wax-seal"
   primary, ghost/outline secondary), inputs, badges/chips, and a dialog — see
   [`components/ui`](components/ui).
@@ -195,7 +197,7 @@ and voiced in character (it politely declines anything off-topic).
 **How it works**
 
 1. **Corpus** — the seven project MDX files in [`content/projects`](content/projects), plus
-   [`content/resume.md`](content/resume.md) (résumé/bio) and
+   [`content/data.md`](content/data.md) (profile: summary, tech stack, experience, projects) and
    [`content/facts.md`](content/facts.md) (personal/fun facts).
 2. **Ingest (build step)** — [`scripts/ingest.mjs`](scripts/ingest.mjs) chunks the corpus,
    embeds each chunk with Gemini `gemini-embedding-001`, and writes a committed local index to
@@ -218,7 +220,7 @@ Without a key — or before the first `npm run ingest` — the Hat replies in ch
 
 **Editing what the Hat knows** — after **any** of these, re-run `npm run ingest` and restart:
 
-- **Résumé / skills / experience:** [`content/resume.md`](content/resume.md).
+- **Profile (summary, tech stack, experience, projects):** [`content/data.md`](content/data.md).
 - **Fun / personal facts** (hobbies, favorites, quirks): [`content/facts.md`](content/facts.md)
   — replace the `(placeholder …)` lines; anything there is "about Phoebe" and in scope.
 - **Projects:** the MDX frontmatter in [`content/projects`](content/projects).
@@ -227,6 +229,65 @@ Without a key — or before the first `npm run ingest` — the Hat replies in ch
 > Redis caching and a ~6-message/visitor/day limit. Keep the Gemini key on the free tier and
 > set a hard spend cap before exposing `/api/ask` publicly. `GET_SORTED` (`/api/sort`) is a
 > separate, later task.
+
+---
+
+## Security & best practices
+
+Both public endpoints — the Sorting Hat (`/api/ask`) and the contact form (`/api/contact`)
+— are built to be **safe to expose on free tiers**: abuse can't run up a bill, bots can't
+flood them, and no secret ever reaches the browser. There's no database and no login, so the
+realistic threats are spam and quota-burn — and each is handled.
+
+### The Sorting Hat AI (`/api/ask`)
+
+- **Keys stay server-side.** The Gemini key lives only in the serverless route; the browser
+  never sees it.
+- **Free-tier by design.** Runs on Gemini's free tier (no billing = a hard $0 ceiling). Set a
+  hard spend cap on the key before going public as a backstop.
+- **Per-visitor rate limit.** ~6 messages/visitor/day (Upstash Redis + `@upstash/ratelimit`,
+  sliding window), keyed by client IP **plus** a random id kept in an **httpOnly** cookie
+  (`hat_id`). Stops a script from draining the free quota; over the limit it returns `429`
+  with an in-character "the Hat must rest" reply — never a raw error.
+- **Answer caching.** Repeat questions are served from Redis instead of re-calling Gemini —
+  cheaper, and ~3.2s → ~0.1s. Order in the route: **rate-limit → cache → model**.
+- **Grounded + guarded.** Answers come only from the retrieved résumé / projects / facts,
+  voiced in character; anything off-topic is politely declined — so the endpoint can't be used
+  as a free general-purpose chatbot (which would burn quota and go off-brand).
+- **Bounded cost per call.** Only the top 3–4 chunks are sent and output tokens are capped, so
+  each answer stays small and well under Gemini's per-minute limits.
+- **Graceful failure.** No key, no index, or a Gemini rate-burst → an in-character notice, not
+  a stack trace.
+
+### The contact form (`/api/contact`)
+
+- **Server-side validation (Zod).** Name / email / message are validated on the server, so
+  browser tampering can't bypass it; message length is bounded (10–1000 chars) to cap payload.
+- **MX domain check.** A DNS `resolveMx` lookup confirms the email's domain can actually
+  receive mail (catches typos like `gmail.con`) — Node built-in, no third-party API. It only
+  rejects when a domain *definitively* can't receive mail; transient DNS errors fail **open**,
+  so a flaky lookup never blocks a real visitor.
+- **Honeypot.** A hidden field (`wand_signature`) real users never see; if a bot fills it, the
+  request is silently accepted and dropped.
+- **Cloudflare Turnstile.** An invisible CAPTCHA; the token is verified server-side before any
+  email is sent, blocking the sophisticated bots the honeypot misses — with no puzzle for
+  humans.
+- **Per-IP rate limit.** ~4 submissions/IP/hour (Upstash Redis), so a script can't flood the
+  inbox or exhaust the email quota.
+- **Injection-safe.** User input is HTML-escaped before it enters the email body, and Resend's
+  structured API (not raw SMTP) means form text can't forge email headers.
+- **Reliable delivery.** Resend handles sender reputation + SPF/DKIM; the visitor's address is
+  set as **reply-to**, so you just hit Reply.
+
+### Shared practices
+
+- **Secrets only in env vars, server-side, never committed** — real values in `.env.local`,
+  placeholders in [`.env.local.example`](.env.local.example).
+- **Free-tier + serverless** — Upstash Redis is reached over HTTPS, so there's no server to run
+  or patch, and every dependency has a hard free ceiling.
+- **Fail friendly** — visitors get an in-character message, never a raw error or stack trace.
+- **Rate-limiting degrades gracefully** — without Redis configured (e.g. locally) the limiter
+  is a no-op, so development is never blocked.
 
 ---
 

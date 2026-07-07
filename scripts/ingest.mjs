@@ -4,7 +4,7 @@
  *
  *   npm run ingest
  *
- * Reads the corpus (project MDX + content/resume.md + content/facts.md), chunks
+ * Reads the corpus (project MDX + content/data.md + content/facts.md), chunks
  * it, embeds each chunk with Gemini (text-embedding-004), and writes the committed
  * index to lib/rag/index.json. Re-run this whenever you edit any corpus file.
  *
@@ -120,7 +120,7 @@ function loadMarkdown(relPath, fallbackSource) {
 
 const docs = [
   ...loadProjects(),
-  loadMarkdown("content/resume.md", "Résumé"),
+  loadMarkdown("content/data.md", "Profile"),
   loadMarkdown("content/facts.md", "About Phoebe"),
 ].filter((d) => d.text);
 
