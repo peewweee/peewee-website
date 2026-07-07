@@ -1,4 +1,4 @@
-import { streamText } from "ai";
+import { generateText } from "ai";
 
 import type { House } from "@/lib/types";
 import { google, CHAT_MODEL } from "./config";
@@ -45,26 +45,28 @@ export function citationsFromChunks(chunks: RetrievedChunk[]): Citation[] {
 }
 
 /**
- * Start a grounded, streaming answer. Returns the AI SDK stream result; the route
- * pumps `result.textStream` to the client. Low maxOutputTokens keeps answers short
- * and well under the free-tier token budget.
+ * Generate a grounded answer (non-streaming). Returns the full text. We use a
+ * single request/response call rather than token streaming — it's markedly more
+ * reliable on serverless (Vercel), where a hand-rolled stream can end up empty.
+ * Low maxOutputTokens keeps answers short and well under the free-tier budget.
  */
-export function answerStream(opts: {
+export async function generateAnswer(opts: {
   question: string;
   chunks: RetrievedChunk[];
   house?: House;
-}) {
+}): Promise<string> {
   const context = buildContext(opts.chunks);
   const houseNote =
     opts.house && opts.house !== "neutral"
       ? `\n\n(The visitor has been sorted into ${opts.house}; you may lightly colour your tone to that house, but never change the facts.)`
       : "";
 
-  return streamText({
+  const { text } = await generateText({
     model: google(CHAT_MODEL),
     system: SYSTEM_PROMPT,
     prompt: `CONTEXT:\n${context}${houseNote}\n\nVisitor's question: ${opts.question}`,
     temperature: 0.6,
     maxOutputTokens: 260,
   });
+  return text.trim();
 }

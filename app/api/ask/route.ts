@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { hasGeminiKey } from "@/lib/rag/config";
 import { retrieve } from "@/lib/rag/retrieve";
-import { answerStream, citationsFromChunks } from "@/lib/rag/ask";
+import { generateAnswer, citationsFromChunks } from "@/lib/rag/ask";
 import {
   checkRateLimit,
   getCachedAnswer,
@@ -11,6 +11,7 @@ import {
 import type { Citation, RetrievedChunk } from "@/lib/rag/types";
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 const askSchema = z.object({
   question: z.string().min(1, "Ask a question.").max(500),
@@ -97,54 +98,25 @@ export async function POST(req: Request) {
   }
   if (chunks.length === 0) return textReply(HAT.notReady, [], { cookie });
 
-  // 5) Stream a grounded answer; one backoff-retry, then a friendly fallback.
+  // 5) Generate a grounded answer (non-streaming — reliable on serverless).
+  //    One short backoff-retry, then a friendly in-character fallback. Errors
+  //    are logged so Vercel's runtime logs surface any Gemini issue.
   const citations = citationsFromChunks(chunks);
-  const encoder = new TextEncoder();
+  let answer = "";
+  try {
+    answer = await generateAnswer({ question, chunks, house });
+  } catch (err) {
+    console.error("[hat] generation failed (attempt 1):", err);
+    try {
+      await new Promise((r) => setTimeout(r, 800));
+      answer = await generateAnswer({ question, chunks, house });
+    } catch (err2) {
+      console.error("[hat] generation failed (attempt 2):", err2);
+    }
+  }
 
-  const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let full = "";
-      let completed = false;
+  if (!answer) return textReply(HAT.pondering, [], { cookie });
 
-      const pump = async () => {
-        const result = answerStream({ question, chunks, house });
-        for await (const delta of result.textStream) {
-          full += delta;
-          controller.enqueue(encoder.encode(delta));
-        }
-      };
-
-      try {
-        await pump();
-        completed = true;
-      } catch {
-        if (full.length === 0) {
-          // Nothing sent yet — a short backoff then one more try.
-          try {
-            await new Promise((r) => setTimeout(r, 800));
-            await pump();
-            completed = true;
-          } catch {
-            controller.enqueue(encoder.encode(HAT.pondering));
-            full = "";
-          }
-        }
-        // If a partial answer was already streamed, we just end it there.
-      } finally {
-        controller.close();
-      }
-
-      // Cache only a clean, complete answer.
-      if (completed && full.trim()) {
-        await setCachedAnswer(question, { answer: full, citations });
-      }
-    },
-  });
-
-  const headers: Record<string, string> = {
-    "Content-Type": "text/plain; charset=utf-8",
-    "X-Citations": citationsHeader(citations),
-  };
-  if (cookie) headers["Set-Cookie"] = cookie;
-  return new Response(stream, { headers });
+  await setCachedAnswer(question, { answer, citations });
+  return textReply(answer, citations, { cookie });
 }
