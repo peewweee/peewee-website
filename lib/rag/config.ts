@@ -14,8 +14,11 @@ export const google = createGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY ?? "",
 });
 
-/** Generation model — grounded answers. Override with GEMINI_CHAT_MODEL. */
-export const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL ?? "gemini-2.5-flash-lite";
+/** Generation model — grounded answers. Override with GEMINI_CHAT_MODEL.
+ *  Free-tier request quotas vary sharply by model on this key (2.5-flash-lite ≈ 20,
+ *  2.0-flash-lite = 0). gemini-2.5-flash has a usable free allowance; we disable its
+ *  "thinking" in ask.ts so the short answer isn't starved of output tokens. */
+export const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL ?? "gemini-2.5-flash";
 
 /** Embedding model — retrieval. Override with GEMINI_EMBED_MODEL. */
 export const EMBED_MODEL = process.env.GEMINI_EMBED_MODEL ?? "gemini-embedding-001";

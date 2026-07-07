@@ -121,26 +121,14 @@ export async function POST(req: Request) {
   //    are logged so Vercel's runtime logs surface any Gemini issue.
   const citations = citationsFromChunks(chunks);
   let answer = "";
-  let genErr = "";
   try {
     answer = await generateAnswer({ question, chunks, house });
   } catch (err) {
-    genErr = errDetail(err);
-    console.error("[hat] generation failed (attempt 1):", genErr);
-    try {
-      await new Promise((r) => setTimeout(r, 800));
-      answer = await generateAnswer({ question, chunks, house });
-    } catch (err2) {
-      genErr = errDetail(err2);
-      console.error("[hat] generation failed (attempt 2):", genErr);
-    }
+    // Logged to Vercel runtime logs; the visitor sees the in-character fallback.
+    console.error("[hat] generation failed:", errDetail(err));
   }
 
-  if (!answer) {
-    const res = textReply(HAT.pondering, [], { cookie });
-    if (genErr) res.headers.set("X-Hat-Error", encodeURIComponent(genErr));
-    return res;
-  }
+  if (!answer) return textReply(HAT.pondering, [], { cookie });
 
   await setCachedAnswer(question, { answer, citations });
   return textReply(answer, citations, { cookie });

@@ -7,7 +7,7 @@
 | **Owner**         | Phoebe Rhone Gangoso — graduating BS Computer Engineering, PUP Manila                                                                                                                                            |
 | **Career target** | AI Engineering roles                                                                                                                                                                                             |
 | **Domain**        | To be decided — skipped for now                                                                                                                                                                                  |
-| **Status**        | Build in progress — content site + 3D castle live and exceeding the original plan; the Great Hall (bio, Tech Stack, Experience) and the 3D "Daily Prophet" featured section are built; **seven** projects on the Projects page (six live, FairySplit WIP). **Phase 3 is partly delivered:** the Ask-the-Hat RAG chat and the hardened contact form are **live**; **Get Sorted (`/api/sort`) and the live "Behind the Magic" panel remain**, and Phase 4 (atmosphere) is still stubbed. ⚠ `lib/rag/index.json` needs a re-ingest (`npm run ingest`) and `resume.pdf` is missing — see §12.                                                                                                                                                                          |
+| **Status**        | Build in progress — content site + 3D castle live and exceeding the original plan; the Great Hall (bio, Tech Stack, Experience) and the 3D "Daily Prophet" featured section are built; **seven** projects on the Projects page (six live, FairySplit WIP). **Phase 3 is essentially done:** the Ask-the-Hat RAG chat and the hardened contact form are **live** (a chatbot only); Phase 4 (atmosphere) is still stubbed. ⚠ `lib/rag/index.json` needs a re-ingest (`npm run ingest`) and `resume.pdf` is missing — see §12.                                                                                                                                                                          |
 | **This document** | The brief for the design phase and the build. Covers concept, audience, sitemap, features, tech stack, architecture, plan, and design direction. A ready-to-paste prompt for the design system is in Appendix A. |
 
 > **Note on the name:** the owner name above is taken from the resume (Phoebe Rhone Gangoso). Swap it everywhere if the site should carry a different name. The site config also uses the nickname **"Peewee"** and the on-site role label **"Software & AI Developer."**
@@ -66,17 +66,16 @@ The landing page (`/`) is a full-screen, low-poly night-time castle — and it *
 
 ### 4.2 The Sorting Hat (AI) — the AI showcase
 
-One character, three demos, telling a complete AI-engineering story:
+The Sorting Hat is an AI **chatbot** that answers questions about me — and it doubles as a portfolio piece:
 
 1. **Ask the Hat (RAG).** Visitors ask about me; the Hat answers **only** from my resume + project write-ups, with source citations (e.g., "from: Aura"). Demonstrates retrieval-augmented generation, grounding, and prompt engineering. _This is the flagship._
-2. **Get Sorted (classification).** The Hat asks a few quick questions (or reads a sentence the visitor types) and sorts them into a Hogwarts house; the site accent then shifts to that house. Demonstrates LLM classification and structured output. Light, fun, shareable.
-3. **Behind the Magic (transparency).** A short "how it works" summary of the real pipeline (embeddings → vector search → LLM, plus caching and rate-limiting) — what turns "cute chatbot" into "this person can ship AI." _Currently a slimmed static section on the **About** page; the live, data-driven panel arrives with Phase 3._
+2. **Behind the Magic (transparency).** A short "how it works" summary of the real pipeline (embeddings → vector search → LLM, plus caching and rate-limiting) — what turns "cute chatbot" into "this person can ship AI." _Currently a slimmed static section on the **About** page; the live, data-driven panel arrives with Phase 3._
 
-**Inline on its own page, two modes.** The Hat is a full inline chat on its own route (**`/sorting-hat`**, "Ask the Sorting Hat") — the old floating "Ask the Hat" button was removed from every page. It's one panel with two modes, opening with two quick-reply chips — _"Ask about Phoebe"_ and _"Sort me into a house"_ — and the visitor can switch anytime. The two modes route to two different backends (see §6): **Ask → `/api/ask`** (RAG) and **Sort → `/api/sort`** (classification). Intents are explicit chips rather than auto-detected — clearer for the visitor, and each request routes cleanly to the right endpoint.
+**Inline on its own page.** The Hat is a full inline chat on its own route (**`/sorting-hat`**, "Ask the Sorting Hat") — the old floating "Ask the Hat" button was removed from every page. Visitors ask anything about me and it answers from **`/api/ask`** (RAG), grounded in my data and politely declining anything off-topic. It's a chatbot — no modes, quizzes, or house-sorting.
 
 **Guardrails.** Answers are strictly grounded in my data; the Hat politely refuses off-topic questions; the API key stays server-side; a spend cap + caching + rate-limiting protect the public endpoint.
 
-> **Build status:** _Ask the Hat_ is **live** — `/api/ask` retrieves over a committed local index and streams a grounded Gemini answer with citations. _Get Sorted_ isn't built yet (**no `/api/sort`**; `data-house` stays `neutral`). See §12.
+> **Build status:** the Hat is **live** — `/api/ask` retrieves over a committed local index and streams a grounded Gemini answer with citations. See §12.
 
 ### 4.3 Background music (wizarding ambience)
 
@@ -159,7 +158,7 @@ Everything runs on free tiers. The only possible spend is Gemini once the projec
 
 ---
 
-## 6. Architecture — how the Hat answers & sorts
+## 6. Architecture — how the Hat answers
 
 **Build-time (once):** résumé + project notes → chunked & embedded (`npm run ingest`) → committed to a **local index** (`lib/rag/index.json`). No vector DB.
 
@@ -172,10 +171,6 @@ Everything runs on free tiers. The only possible spend is Gemini once the projec
 5. **Gemini Flash-Lite** (via the Vercel AI SDK) composes an answer grounded **only** in the retrieved text.
 6. The answer streams back to the Hat with **source citations**.
 
-**Get Sorted — a separate, simpler path (no retrieval).** House sorting does **not** touch the vector DB. The visitor's quick answers (or a sentence they type) go to **`/api/sort`** — a Vercel serverless route behind the same Upstash rate-limit — where **Gemini Flash-Lite** returns a **structured** result: one of the four houses + a one-line reason. The client then sets `data-house` on a subtree (instant accent/glow swap, no rebuild), persists the choice in `localStorage` so it sticks on return visits, and the 3D castle reads the same per-house glow triplet so the towers recolor too.
-
-_Optional simpler version:_ Get Sorted could instead be a fixed **client-side quiz** (scored multiple-choice → house) with no server, no LLM, and no cost — but then it stops being an AI demo. The plan keeps the LLM version on purpose, as the second AI skill on display.
-
 ---
 
 ## 7. Build plan (phased — each phase ships something usable)
@@ -183,7 +178,7 @@ _Optional simpler version:_ Get Sorted could instead be a fixed **client-side qu
 0. **Scaffold** — Next.js + TS + Tailwind, theme tokens (house colors), base layout, deploy a "hello world" to Vercel on the domain.
 1. **Content site** — the four project pages, About, resume download, working contact form. _This alone is already a real portfolio._
 2. **3D nav hub** — source + optimize the castle model, build the r3f scene, glowing clickable towers → routes, camera transitions, 2D/mobile fallback + accessible menu.
-3. **The Hat** — ✅ ingest content → local `index.json` (`npm run ingest`); `/api/ask` with retrieval + Gemini streaming + citations; rate-limit & cache. **Remaining:** the live "Behind the Magic" panel and "Get Sorted" via a separate `/api/sort` classifier.
+3. **The Hat** — ✅ ingest content → local `index.json` (`npm run ingest`); `/api/ask` with retrieval + Gemini streaming + citations; rate-limit & cache. **Remaining:** the optional live "Behind the Magic" panel.
 4. **Atmosphere** — background music (Howler) + wand cursor, both with visible toggles and accessibility support.
 5. **Polish** — accessibility pass, performance budget (Lighthouse), reduced-motion variants, SEO / OG images, analytics.
 
@@ -200,7 +195,7 @@ Content first means there is always a shippable portfolio; the 3D, AI, and atmos
 - Base: deep night-sky **navy / indigo**, near-black charcoal.
 - Surfaces / text on dark: **parchment / cream**.
 - Accent: **gold / brass** for magical highlights and glows.
-- **House themes** (used by "Get Sorted," and as the only place the four houses appear strongly): Gryffindor (scarlet + gold), Slytherin (emerald + silver), Ravenclaw (blue + bronze), Hufflepuff (yellow + black). Neutral **gold-on-navy** is the default until a visitor is sorted.
+- **House accent set** (four themes in the design system, currently unused): Gryffindor (scarlet + gold), Slytherin (emerald + silver), Ravenclaw (blue + bronze), Hufflepuff (yellow + black). Neutral **gold-on-navy** is the site default.
 
 **Typography.** An engraved, elegant **serif for display/headings** (e.g., Cinzel or Cormorant Garamond) paired with a **highly readable sans for body** (e.g., Inter). Optional ink/handwritten accent, used sparingly. Legibility always beats flourish.
 
@@ -256,9 +251,9 @@ Nocturnal navy base, parchment surfaces, gold accent. Defined in `:root`:
 - **Focus ring:** `--focus #B7A6FF`
 - **Glow:** `--accent-glow 212,175,55` (raw RGB triplet, used inside `rgba()` for glows)
 
-### 11.2 House theming (for "Get Sorted")
+### 11.2 House accent themes (design system)
 
-Houses are applied by setting `data-house="…"` on a subtree — the nocturnal base never changes, so there's no rebuild or flash; only `--accent`, `--accent-2`, `--accent-text`, and the glow swap. A matching JS map powers the Get Sorted logic.
+The design system defines four house accent themes, applied by setting `data-house="…"` on a subtree (swaps `--accent`, `--accent-2`, `--accent-text`, and the glow; the nocturnal base never changes). They're an available accent set only — the site stays on the neutral default (nothing switches them at runtime).
 
 | House      | Accent    | Secondary          | Glow (RGB)   |
 | ---------- | --------- | ------------------ | ------------ |
@@ -280,13 +275,13 @@ Easing tokens: `--ease-float`, `--ease-out-soft`, `--ease-candle`, `--ease-glide
 
 ### 11.5 The 2D ↔ 3D boundary
 
-The **design system owns everything in HTML/CSS** — components, the 2D fallback hero, the DOM tower-label chips, the wand cursor, the music toggle. **React Three Fiber / Three.js owns the castle scene itself** — model, lighting, camera moves, in-scene bloom and particles. The two stay cohesive because the 3D scene **consumes shared tokens** from the design system: the gold `--accent` + `--accent-glow` triplet for tower highlights, the per-house glow triplets for Get Sorted, the night-sky base colors (`--bg`, `--bg-sunken`), and the motion easings/durations for camera glides.
+The **design system owns everything in HTML/CSS** — components, the 2D fallback hero, the DOM tower-label chips, the wand cursor, the music toggle. **React Three Fiber / Three.js owns the castle scene itself** — model, lighting, camera moves, in-scene bloom and particles. The two stay cohesive because the 3D scene **consumes shared tokens** from the design system: the gold `--accent` + `--accent-glow` triplet for tower highlights, the night-sky base colors (`--bg`, `--bg-sunken`), and the motion easings/durations for camera glides.
 
 ---
 
 ## 12. Current build status (vs. the plan)
 
-_Phases 1–2 are done and exceed the plan. **Phase 3 is partly delivered:** the Ask-the-Hat RAG chat and the hardened contact form are live; **Get Sorted and the live "Behind the Magic" panel remain.** Phase 4 (atmosphere) is still stubbed. ⚠ Immediate: `lib/rag/index.json` is truncated/stale — regenerate it with `npm run ingest`, or `next build` / typecheck will fail._
+_Phases 1–2 are done and exceed the plan. **Phase 3 is essentially done:** the Ask-the-Hat RAG chat and the hardened contact form are live (a chatbot only). Phase 4 (atmosphere) is still stubbed. ⚠ Immediate: `lib/rag/index.json` is truncated/stale — regenerate it with `npm run ingest`, or `next build` / typecheck will fail._
 
 **Changed from the plan**
 
@@ -308,7 +303,6 @@ _Phases 1–2 are done and exceed the plan. **Phase 3 is partly delivered:** the
 **Still to do**
 
 - **⚠ Regenerate the RAG index (build blocker).** `lib/rag/index.json` is truncated (an interrupted ingest) and stale vs. `content/data.md` — run `npm run ingest` and commit it, or `next build` / typecheck fail. — `lib/rag/index.json`
-- **"Get Sorted" isn't built.** No `/api/sort` route or classifier; `data-house` is hardcoded `neutral`, so the house-accent swap never fires (the `lib/houses.ts` map is unused). — `app/layout.tsx`, `lib/houses.ts`
 - **"Behind the Magic" is static _and_ inaccurate.** The About-page copy still says vectors "live in Upstash Vector" — wrong; it's a local index. Fix the copy, then build the live panel. — `app/about/page.tsx`
 - **Background music is a stub.** Howler isn't installed and there's no audio file — the toggle is UI-only. — `components/atmosphere/music-toggle.tsx`
 - **Wand cursor is a preview.** A single glowing follower dot, not the planned sparkle/ember trail + "cast" flourish. — `components/atmosphere/wand-cursor.tsx`
@@ -375,7 +369,7 @@ DESIGN A COMPLETE, COHESIVE DESIGN SYSTEM. DELIVER:
 1. Color system — a nocturnal base (deep navy/indigo), parchment/cream surfaces, and a
    gold/brass accent for magical highlights and glows. Provide semantic tokens
    (background, surface, text, muted, border, primary, accent, success/warning/danger,
-   focus). Include four switchable "house" accent themes used by the Get Sorted feature
+   focus). Include four "house" accent themes (an available accent set)
    — Gryffindor (scarlet/gold), Slytherin (emerald/silver), Ravenclaw (blue/bronze),
    Hufflepuff (yellow/black) — plus a neutral default. Give exact hex values and ensure
    all text/background pairings meet WCAG 2.1 AA (verify gold-on-navy).

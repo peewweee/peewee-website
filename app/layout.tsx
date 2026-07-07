@@ -31,7 +31,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={fontVariables}>
-      {/* data-house sets the active accent theme; "Get Sorted" (Phase 3) swaps it. */}
+      {/* data-house sets the active accent theme (default: neutral). */}
       <body data-house="neutral" className="antialiased">
         <a
           href="#main-content"

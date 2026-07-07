@@ -12,8 +12,7 @@ interactive 3D castle that serves as the navigation.
 castle navigation hub (React Three Fiber), a fleshed-out **Great Hall** (bio, Tech Stack,
 Experience, and a 3D "Daily Prophet" featured section), and **seven real projects** that link
 out to their live sites. The **"Ask the Sorting Hat" RAG chat is live** (Gemini + a local
-embedded index — see [Sorting Hat (RAG)](#sorting-hat-rag)); "Get Sorted" (`/api/sort`) and
-the atmosphere effects (Phase 4) remain clean, typed **stubs**.
+embedded index — see [Sorting Hat (RAG)](#sorting-hat-rag)); the atmosphere effects (Phase 4) remain clean, typed **stubs**.
 
 ---
 
@@ -114,7 +113,6 @@ No API keys are required to run the site locally. The AI and email features are 
 | Area                  | Status                                                  | Notes                                                                                 |
 | --------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | Ask the Hat (RAG)     | ✅ **Live** — [`lib/rag`](lib/rag), [`/api/ask`](app/api/ask/route.ts) | Gemini Flash-Lite + local embedded index; streaming, in-character, cited. See [Sorting Hat (RAG)](#sorting-hat-rag). |
-| Get Sorted (Phase 3)  | Stub — [`/api/sort`](app/api) (not built)               | House classifier → `data-house` swap. Separate later task.                            |
 | Music (Phase 4)       | Stub — [`MusicToggle`](components/atmosphere/music-toggle.tsx) | Default **OFF**, persisted, reduced-motion aware. No audio yet.                       |
 | Wand cursor (Phase 4) | Stub — [`WandCursor`](components/atmosphere/wand-cursor.tsx)   | Desktop-only, reduced-motion aware, off switch. Lightweight follower preview.         |
 
@@ -227,8 +225,7 @@ Without a key — or before the first `npm run ingest` — the Hat replies in ch
 
 > 💰 **Free-tier safe:** only the top 3–4 chunks and a low output-token cap per answer, plus
 > Redis caching and a ~6-message/visitor/day limit. Keep the Gemini key on the free tier and
-> set a hard spend cap before exposing `/api/ask` publicly. `GET_SORTED` (`/api/sort`) is a
-> separate, later task.
+> set a hard spend cap before exposing `/api/ask` publicly.
 
 ---
 
@@ -301,8 +298,8 @@ and fallback all stay as-is.
 **Phase 3 — the Hat (AI).** Add `GEMINI_API_KEY` + Upstash. Implement
 [`lib/rag`](lib/rag): ✅ already done — local `index.json` + `/api/ask` retrieval + grounded
 Gemini answer with **streaming** (Vercel AI SDK) and citations; add Redis **rate-limit +
-cache**. Then build "Get Sorted" (classification → `data-house` swap) and "Behind the
-Magic".
+cache**. Then build the "Behind the
+Magic" panel.
 
 **Phase 4 — atmosphere.** Wire **Howler.js** into `MusicToggle` (royalty-free/CC track,
 **not** the film score; start on user gesture; fade in/out). Upgrade `WandCursor` to the

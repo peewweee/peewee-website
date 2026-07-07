@@ -67,6 +67,11 @@ export async function generateAnswer(opts: {
     prompt: `CONTEXT:\n${context}${houseNote}\n\nVisitor's question: ${opts.question}`,
     temperature: 0.6,
     maxOutputTokens: 260,
+    // One retry only — hammering on a quota (429) just burns more of it.
+    maxRetries: 1,
+    // Gemini 2.5 models "think" by default; that would consume the small output
+    // budget and return an empty answer. Disable it for fast, short replies.
+    providerOptions: { google: { thinkingConfig: { thinkingBudget: 0 } } },
   });
   const trimmed = text.trim();
   // Surface empty completions (safety block, length, etc.) as an error so the

@@ -22,7 +22,7 @@ export interface NavItem {
   glyph: string;
 }
 
-/** A house definition for the "Get Sorted" feature (mirrors the style guide). */
+/** A house accent-theme definition (mirrors the style guide's four houses). */
 export interface HouseTheme {
   key: House;
   name: string;
