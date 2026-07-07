@@ -7,7 +7,7 @@
 | **Owner**         | Phoebe Rhone Gangoso — graduating BS Computer Engineering, PUP Manila                                                                                                                                            |
 | **Career target** | AI Engineering roles                                                                                                                                                                                             |
 | **Domain**        | To be decided — skipped for now                                                                                                                                                                                  |
-| **Status**        | Build in progress — content site + 3D castle live; the Great Hall (bio, Tech Stack, Experience) and the 3D "Daily Prophet" featured section are built; six real projects link out to live sites. The AI Hat is inline (Phase 3 backend stubbed); atmosphere (Phase 4) stubbed.                                                                                                                                                                          |
+| **Status**        | Build in progress — content site + 3D castle live and exceeding the original plan; the Great Hall (bio, Tech Stack, Experience) and the 3D "Daily Prophet" featured section are built; **seven** projects on the Projects page (six live, FairySplit WIP). **Phase 3 (AI Hat) + Phase 4 (atmosphere) are still stubs** — Ask-the-Hat, Get Sorted, contact email, and music aren’t wired yet, and `resume.pdf` is missing (see §12).                                                                                                                                                                          |
 | **This document** | The brief for the design phase and the build. Covers concept, audience, sitemap, features, tech stack, architecture, plan, and design direction. A ready-to-paste prompt for the design system is in Appendix A. |
 
 > **Note on the name:** the owner name above is taken from the resume (Phoebe Rhone Gangoso). Swap it everywhere if the site should carry a different name. The site config also uses the nickname **"Peewee"** and the on-site role label **"Software & AI Developer."**
@@ -76,6 +76,8 @@ One character, three demos, telling a complete AI-engineering story:
 
 **Guardrails.** Answers are strictly grounded in my data; the Hat politely refuses off-topic questions; the API key stays server-side; a spend cap + caching + rate-limiting protect the public endpoint.
 
+> **Build status (Phase 3 — not yet wired):** `/api/ask` returns a placeholder answer (no Gemini / Upstash Vector), and there is **no `/api/sort`** yet, so _Get Sorted_ never fires. See §12.
+
 ### 4.3 Background music (wizarding ambience)
 
 A looping orchestral "wizarding" ambience with a visible, themed toggle.
@@ -84,6 +86,8 @@ A looping orchestral "wizarding" ambience with a visible, themed toggle.
 - A **visible, animated control** (e.g., a glowing musical rune) to mute/unmute; keyboard-accessible; the control's animation respects "reduced motion."
 - **Licensing (important):** use a royalty-free / Creative Commons track that _evokes_ the vibe — **not** the copyrighted Harry Potter film score. _(Practical guidance, not legal advice.)_
 - **Tech:** Howler.js for reliable cross-browser playback and fade in/out.
+
+> **Build status:** currently a **UI-only stub** — Howler and the audio track aren't added yet. See §12.
 
 ### 4.4 Wand cursor
 
@@ -94,7 +98,7 @@ The pointer becomes a wand with a subtle sparkle / ember trail; hovering an inte
 - **Respects "reduced motion"** (no trail / minimal) and offers an **off switch** to revert to the normal cursor for accessibility.
 - Kept **lightweight** — capped particle count, driven by `requestAnimationFrame`.
 
-### 4.5 Projects — the "Library" (six projects, linking to live work)
+### 4.5 Projects — the "Library" (seven projects, linking to live work)
 
 The Projects page ("The Library") is a **2-column grid of "spellbook" cards**. Each card uses the project's cover image as its background with a soft multi-stop bottom fade, shows the **full stack and description**, and **links straight to the live site in a new tab** — the old per-project `/projects/[slug]` case-study pages were removed. Content lives as MDX frontmatter in `content/projects/*.mdx`; the schema carries `category`, `cover`, `link`, `stack`, `status`, and `order`.
 
@@ -104,8 +108,9 @@ The Projects page ("The Library") is a **2-column grid of "spellbook" cards**. E
 | **CrowdFlow — Itinerary Planner** | AI | crowdflowph.vercel.app | Next.js, TypeScript, Tailwind, React, Leaflet, Gemini API, OpenWeather |
 | **Solar Connect** | Web App · IoT | solarconnect.live | Next.js, TypeScript, Tailwind, Supabase, OpenWeather |
 | **Balai ni Juan** | Web | balai-ni-juan.vercel.app | JavaScript, HTML, CSS |
-| **Arduino Day PH 2025** | UI/UX | github.com/peewweee/arduinodayph25 | Figma |
+| **Arduino Day PH 2025** | UI/UX | Figma prototype | Figma |
 | **Sparkfest** | UI/UX | sparkfest-2025.vercel.app | Figma |
+| **FairySplit** _(WIP)_ | Web App | — (in progress) | React, Vite, NestJS, PostgreSQL |
 
 ### 4.6 The Great Hall page & the 3D "Daily Prophet"
 
@@ -276,6 +281,60 @@ Easing tokens: `--ease-float`, `--ease-out-soft`, `--ease-candle`, `--ease-glide
 ### 11.5 The 2D ↔ 3D boundary
 
 The **design system owns everything in HTML/CSS** — components, the 2D fallback hero, the DOM tower-label chips, the wand cursor, the music toggle. **React Three Fiber / Three.js owns the castle scene itself** — model, lighting, camera moves, in-scene bloom and particles. The two stay cohesive because the 3D scene **consumes shared tokens** from the design system: the gold `--accent` + `--accent-glow` triplet for tower highlights, the per-house glow triplets for Get Sorted, the night-sky base colors (`--bg`, `--bg-sunken`), and the motion easings/durations for camera glides.
+
+---
+
+## 12. Current build status (vs. the plan)
+
+_Phase 1 (content site) and Phase 2 (3D castle) are done and **exceed** the original plan. Phase 3 (the AI Hat) and Phase 4 (atmosphere) are still **stubs**._
+
+**Changed from the plan**
+
+- **Landing page flipped.** `/` **is** the 3D castle; the Great Hall moved to `/great-hall` (the "Home" nav points there). — `app/page.tsx`, `lib/site.ts`
+- **Projects have no detail pages.** Seven real projects, no `/projects/[slug]` — 2-column "spellbook" cards that link out to live sites. — `app/projects/page.tsx`, `content/projects/`
+- **Sorting Hat moved inline** onto its own `/sorting-hat` route; the floating chat button was removed. — `components/sorting-hat/`
+- **Great Hall got much richer** than a themed hero — Tech Stack, Experience, and the 3D "Daily Prophet" featured newspapers. — `app/great-hall/page.tsx`
+- **Contact is the "owl post" form** (Full Name / Email / Message) with real social icons wired.
+
+**Added beyond the plan**
+
+- The 3D "Daily Prophet" scroll-driven newspapers; castle **tower labels + a pulsing Sorting-Hat map indicator**; the Experience **timeline beam**; a **7th project (FairySplit)**; and real LinkedIn / GitHub / Email / Facebook links.
+
+**Planned but not delivered / still stubbed**
+
+- **RAG "Ask the Hat" is a stub.** `/api/ask` → `lib/rag/ask.ts` returns a canned "still being enchanted" reply — **no Gemini, no Upstash Vector**.
+- **"Get Sorted" isn't wired.** There's **no `/api/sort`** route, and `data-house` is stuck on `neutral`, so the house-accent swap never fires. — `app/layout.tsx`
+- **Contact email is stubbed.** `/api/contact` validates + honeypots + logs, but **Resend isn't installed/keyed**, so no mail is sent. — `app/api/contact/route.ts`
+- **Background music is a stub.** **Howler isn't installed and there's no audio file** — the toggle is UI-only. — `components/atmosphere/music-toggle.tsx`
+- **`resume.pdf` is missing.** The Resume page's "Download résumé (PDF)" points at `/resume.pdf`, but no such file exists in `public/`, so the download is currently **broken**. — `app/resume/page.tsx`
+
+---
+
+## 13. External services (and why each earns its place)
+
+The services wired into the site (excluding Gemini), chosen so a public, recruiter-facing portfolio stays **reliable, spam-proof, and free to run**.
+
+| Service | Category | What it does here |
+| --- | --- | --- |
+| **Resend** | Transactional email | Delivers "owl post" contact messages to the Gmail inbox |
+| **Cloudflare Turnstile** | Invisible CAPTCHA | Confirms the sender is human before a message is sent |
+| **Upstash Redis** | Serverless key-value store | Rate-limits the endpoints + caches the Hat's answers |
+| _(DNS MX lookup)_ | Built-in, not a paid API | Checks an email's domain can actually receive mail |
+
+**Resend — so the contact form actually works.** A form that doesn't deliver is just decoration. You can't reliably send email straight from a browser or a random SMTP server — it lands in spam or gets blocked. Resend is built for app-to-inbox delivery (handles sender reputation, SPF/DKIM), so a recruiter's message reliably reaches the inbox. _Importance:_ turns the "Send an Owl" form into a real way to get hired.
+
+**Cloudflare Turnstile — so bots can't abuse it.** Any public form is a spam magnet — bots blast junk, phishing, and burn quotas. Turnstile is an _invisible_ bot check: it verifies real humans without making them solve puzzles. _Importance:_ keeps the inbox clean and protects the free email/AI quotas from automated abuse, with zero friction for real visitors.
+
+**Upstash Redis — the cost + abuse guardrail (two jobs).**
+
+- _Rate-limiting_ — caps requests per visitor (contact: 4/hour by IP; Hat: 6/day). Stops a script from flooding the endpoints and running up the free Gemini/email limits.
+- _Answer caching_ — repeat questions to the Hat are served instantly from Redis instead of re-calling Gemini (measured ~3.2s → ~0.1s). Faster _and_ it saves the free AI quota.
+
+_Importance:_ this is what makes it safe to expose an AI feature on a free tier publicly. It's serverless (HTTP/REST), so it runs on Vercel with no server to manage. The [`/api/ask`](app/api/ask/route.ts) route does **rate-limit → cache → model**, in that order.
+
+**DNS MX lookup — data quality, no paid service.** The contact form does a DNS lookup to confirm an email's domain can receive mail (catches `gmail.con`). It's built into Node — no third-party API needed. _Importance:_ makes the reply-to address real, so you can actually reply — the free, correct alternative to a paid email-verification API.
+
+**The through-line:** every pick is free-tier, serverless-friendly, and solves one real production problem — delivery (Resend), spam (Turnstile), cost/abuse (Upstash), data quality (MX). An AI feature that's rate-limited, cached, and abuse-protected is exactly the "can ship production AI" story the portfolio is trying to prove — and a solid thing to walk through in an interview.
 
 ---
 

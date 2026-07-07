@@ -17,6 +17,12 @@ export interface RetrievedChunk extends SourceChunk {
   score: number;
 }
 
+/** A chunk as stored in the committed local index (embedding baked in). */
+export interface IndexedChunk extends SourceChunk {
+  /** The embedding vector produced at ingest time. */
+  embedding: number[];
+}
+
 /** A citation shown to the user under an answer. */
 export interface Citation {
   /** Origin label, e.g. "Aura". */

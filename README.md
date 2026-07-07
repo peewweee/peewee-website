@@ -10,9 +10,10 @@ interactive 3D castle that serves as the navigation.
 
 **Phases 0–2 plus a content pass are live:** the shippable content site, the interactive 3D
 castle navigation hub (React Three Fiber), a fleshed-out **Great Hall** (bio, Tech Stack,
-Experience, and a 3D "Daily Prophet" featured section), and **six real projects** that link
-out to their live sites. The AI Hat now lives inline on its own page; its backend (Phase 3)
-and the atmosphere effects (Phase 4) remain clean, typed **stubs**.
+Experience, and a 3D "Daily Prophet" featured section), and **seven real projects** that link
+out to their live sites. The **"Ask the Sorting Hat" RAG chat is live** (Gemini + a local
+embedded index — see [Sorting Hat (RAG)](#sorting-hat-rag)); "Get Sorted" (`/api/sort`) and
+the atmosphere effects (Phase 4) remain clean, typed **stubs**.
 
 ---
 
@@ -108,13 +109,12 @@ No API keys are required to run the site locally. The AI and email features are 
 
 ### Scaffolded stubs (clean typed interfaces + TODOs)
 
-| Area                  | Stub                                                    | Notes                                                                                 |
+| Area                  | Status                                                  | Notes                                                                                 |
 | --------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Sorting Hat (Phase 3) | [`SortingHat`](components/sorting-hat/sorting-hat.tsx)  | Inline chat on `/sorting-hat` (floating button removed) with a "thinking" state + citation chips; calls the stubbed `/api/ask`. |
-| RAG (Phase 3)         | [`lib/rag`](lib/rag)                                    | Typed `ingest` / `retrieve` / `ask` stubs.                                            |
-| Ask API (Phase 3)     | [`/api/ask`](app/api/ask/route.ts)                      | Validates input, returns a stubbed grounded answer + citations.                       |
-| Music (Phase 4)       | [`MusicToggle`](components/atmosphere/music-toggle.tsx) | Default **OFF**, persisted, reduced-motion aware. No audio yet.                       |
-| Wand cursor (Phase 4) | [`WandCursor`](components/atmosphere/wand-cursor.tsx)   | Desktop-only, reduced-motion aware, off switch. Lightweight follower preview.         |
+| Ask the Hat (RAG)     | ✅ **Live** — [`lib/rag`](lib/rag), [`/api/ask`](app/api/ask/route.ts) | Gemini Flash-Lite + local embedded index; streaming, in-character, cited. See [Sorting Hat (RAG)](#sorting-hat-rag). |
+| Get Sorted (Phase 3)  | Stub — [`/api/sort`](app/api) (not built)               | House classifier → `data-house` swap. Separate later task.                            |
+| Music (Phase 4)       | Stub — [`MusicToggle`](components/atmosphere/music-toggle.tsx) | Default **OFF**, persisted, reduced-motion aware. No audio yet.                       |
+| Wand cursor (Phase 4) | Stub — [`WandCursor`](components/atmosphere/wand-cursor.tsx)   | Desktop-only, reduced-motion aware, off switch. Lightweight follower preview.         |
 
 ---
 
@@ -169,17 +169,64 @@ To re-theme a subtree by house:
 Copy `.env.local.example` → `.env.local`. **All keys are server-side only; never commit
 real secrets.** Nothing here is needed for Phase 1.
 
-| Variable                                                      | Used by                    | Needed when                            |
-| ------------------------------------------------------------- | -------------------------- | -------------------------------------- |
-| `GEMINI_API_KEY`                                              | Answers **and** embeddings | Phase 3 (Sorting Hat)                  |
-| `UPSTASH_VECTOR_REST_URL` / `_TOKEN`                          | Vector DB (retrieval)      | Phase 3                                |
-| `UPSTASH_REDIS_REST_URL` / `_TOKEN`                           | Cache + rate limiting      | Phase 3                                |
-| `RESEND_API_KEY` (+ `CONTACT_FROM_EMAIL`, `CONTACT_TO_EMAIL`) | Owl post email             | Phase 1 finalize (optional)            |
-| `NEXT_PUBLIC_SITE_URL`                                        | Canonical/OG base URL      | Before deploy (no domain is hardcoded) |
+| Variable                                                      | Used by                       | Needed when                            |
+| ------------------------------------------------------------- | ----------------------------- | -------------------------------------- |
+| `GEMINI_API_KEY`                                              | Answers **and** embeddings    | Sorting Hat (ingest + `/api/ask`)      |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN`                           | Cache + rate limiting         | Optional — `/api/ask` protection       |
+| `RESEND_API_KEY` (+ `CONTACT_FROM_EMAIL`, `CONTACT_TO_EMAIL`) | Owl post email                | Phase 1 finalize (optional)            |
+| `NEXT_PUBLIC_SITE_URL`                                        | Canonical/OG base URL         | Before deploy (no domain is hardcoded) |
+
+> Retrieval uses a **committed local index** (`lib/rag/index.json`), so **no vector DB** is
+> needed — Upstash **Redis** is the only optional cloud dependency, and only for caching +
+> rate-limiting `/api/ask`. See [Sorting Hat (RAG)](#sorting-hat-rag).
 
 > 💰 **Cost guardrail:** before exposing `/api/ask` publicly, set a **hard spend cap** on
 > the Gemini key in Google AI Studio / Google Cloud billing. The public endpoint must also
 > be rate-limited + cached (Upstash Redis) — wired in Phase 3.
+
+---
+
+## Sorting Hat (RAG)
+
+The **"Ask the Sorting Hat"** chat ([`/sorting-hat`](app/sorting-hat)) answers questions
+about Phoebe using **retrieval-augmented generation**, grounded strictly in her own content
+and voiced in character (it politely declines anything off-topic).
+
+**How it works**
+
+1. **Corpus** — the seven project MDX files in [`content/projects`](content/projects), plus
+   [`content/resume.md`](content/resume.md) (résumé/bio) and
+   [`content/facts.md`](content/facts.md) (personal/fun facts).
+2. **Ingest (build step)** — [`scripts/ingest.mjs`](scripts/ingest.mjs) chunks the corpus,
+   embeds each chunk with Gemini `gemini-embedding-001`, and writes a committed local index to
+   [`lib/rag/index.json`](lib/rag/index.json). No external vector DB.
+3. **Ask** — [`/api/ask`](app/api/ask/route.ts) rate-limits (Upstash Redis, optional) →
+   returns a cached answer if present → embeds the question and cosine-ranks the top 3–4
+   chunks ([`lib/rag/retrieve.ts`](lib/rag/retrieve.ts)) → **streams** a short, in-character
+   Gemini Flash-Lite answer grounded only in those chunks, with source citations.
+
+**Setup**
+
+```bash
+cp .env.local.example .env.local     # then fill GEMINI_API_KEY (Upstash Redis optional locally)
+npm run ingest                       # build lib/rag/index.json (re-run after ANY content edit)
+npm run dev                          # restart if already running, to pick up the new index
+```
+
+Without a key — or before the first `npm run ingest` — the Hat replies in character
+("my memory hasn't been woven yet…") instead of erroring.
+
+**Editing what the Hat knows** — after **any** of these, re-run `npm run ingest` and restart:
+
+- **Résumé / skills / experience:** [`content/resume.md`](content/resume.md).
+- **Fun / personal facts** (hobbies, favorites, quirks): [`content/facts.md`](content/facts.md)
+  — replace the `(placeholder …)` lines; anything there is "about Phoebe" and in scope.
+- **Projects:** the MDX frontmatter in [`content/projects`](content/projects).
+
+> 💰 **Free-tier safe:** only the top 3–4 chunks and a low output-token cap per answer, plus
+> Redis caching and a ~6-message/visitor/day limit. Keep the Gemini key on the free tier and
+> set a hard spend cap before exposing `/api/ask` publicly. `GET_SORTED` (`/api/sort`) is a
+> separate, later task.
 
 ---
 

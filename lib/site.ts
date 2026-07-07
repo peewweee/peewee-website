@@ -16,9 +16,10 @@ export const siteConfig = {
     "Harry Potter–themed portfolio of Phoebe Rhone Gangoso — graduating Computer Engineer pursuing AI Engineering. An AI 'Sorting Hat' answers questions about her work via retrieval-augmented generation.",
   // Swap '#' for real profiles. Do not commit private addresses.
   socials: [
-    { label: "GitHub", href: "#" },
-    { label: "LinkedIn", href: "#" },
-    { label: "Email", href: "#" },
+    { label: "LinkedIn", href: "https://www.linkedin.com/in/phoeberhone/" },
+    { label: "GitHub", href: "https://github.com/peewweee" },
+    { label: "Email", href: "mailto:phoeberhonegangoso@gmail.com" },
+    { label: "Facebook", href: "https://www.facebook.com/phoeberhone/" },
   ] satisfies ProjectLink[],
 } as const;
 

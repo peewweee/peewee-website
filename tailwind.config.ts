@@ -180,6 +180,22 @@ const config: Config = {
           "0%, 100%": { opacity: "1", filter: "brightness(1)" },
           "43%": { opacity: "0.78", filter: "brightness(1.18)" },
         },
+        owlFloat: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-3px)" },
+        },
+        wingFlap: {
+          "0%, 100%": { transform: "rotate(0)" },
+          "50%": { transform: "rotate(-14deg)" },
+        },
+        tuftWiggle: {
+          "0%, 100%": { transform: "rotate(0)" },
+          "50%": { transform: "rotate(5deg)" },
+        },
+        mailBob: {
+          "0%, 100%": { transform: "translateY(0) rotate(-3deg)" },
+          "50%": { transform: "translateY(2px) rotate(3deg)" },
+        },
       },
       animation: {
         float: "float 6s var(--ease-float) infinite",
@@ -190,6 +206,10 @@ const config: Config = {
         "hat-talk": "hatTalk 2.4s ease-in-out infinite",
         "hat-blink": "hatBlink 4.2s infinite",
         "hat-glow": "hatGlow 2.6s infinite",
+        "owl-float": "owlFloat 3.4s ease-in-out infinite",
+        "wing-flap": "wingFlap 1.8s ease-in-out infinite",
+        "tuft-wiggle": "tuftWiggle 3s ease-in-out infinite",
+        "mail-bob": "mailBob 2.6s ease-in-out infinite",
       },
     },
   },

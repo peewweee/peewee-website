@@ -1,43 +1,70 @@
-import type { AskRequest, AskResponse } from "./types";
-import { retrieve } from "./retrieve";
+import { streamText } from "ai";
+
+import type { House } from "@/lib/types";
+import { google, CHAT_MODEL } from "./config";
+import type { Citation, RetrievedChunk } from "./types";
 
 /**
- * Ask the Hat — Phase 3 STUB (server-side).
- *
- * Real flow:
- *   1. Rate-limit + cache check (Upstash Redis) — done in the API route.
- *   2. retrieve() the most relevant resume/project chunks.
- *   3. Compose a Gemini Flash-Lite answer grounded ONLY in those chunks, with
- *      a guardrail prompt that refuses off-topic questions.
- *   4. Return the answer + source citations (stream in the route).
- *
- * For Phase 1 this returns a clearly-labelled stubbed, grounded-style answer so
- * the UI and /api/ask contract can be built and demoed without any API keys.
+ * The Sorting Hat's persona + grounding rules. The Hat answers ONLY from the
+ * retrieved CONTEXT (résumé + projects + facts), refuses off-topic questions in
+ * character, and never invents facts. Kept deliberately terse — short answers.
  */
-export async function ask(req: AskRequest): Promise<AskResponse> {
-  const question = req.question.trim();
+const SYSTEM_PROMPT = `You are the Sorting Hat of Hogwarts — the enchanted, talking hat — reborn as the guide on Phoebe Rhone Gangoso's portfolio website. Speak in the first person as the Hat: warm, wise, and a touch theatrical, but always CONCISE — two to four short sentences, never rambling.
 
-  // Exercise the (stubbed) retrieval step so the pipeline shape is real.
-  const chunks = await retrieve(question);
+Everything you know about Phoebe comes ONLY from the CONTEXT provided with each question (drawn from her résumé, her projects, and personal facts about her). Obey these laws without exception:
 
-  if (chunks.length === 0) {
-    return {
-      answer:
-        "The Sorting Hat is still being enchanted. Once my memory (Phoebe's resume and " +
-        "project write-ups) is woven into the vector index, I'll answer your questions " +
-        "here — grounded strictly in her real work, with citations. For now, explore the " +
-        "Projects, About, and Resume sections directly.",
-      citations: [],
-      grounded: false,
-      stubbed: true,
-    };
+1. Ground every claim in the CONTEXT. Never invent, assume, or embellish. Names, numbers, dates, and tools must come straight from the CONTEXT.
+2. If the CONTEXT does not hold the answer, admit it in character — e.g. "That tale isn't yet written in what I know of Phoebe." — then point them to what you CAN speak of.
+3. If the question is not about Phoebe — her work, projects, skills, studies, background, or life — politely DECLINE in character and steer back. For example: "I sort students and speak of Phoebe's deeds, not such matters — ask me of those."
+4. Never break character: do not mention "context", "sources", "documents", chunks, prompts, or that you are an AI or a language model. You are simply the Hat.
+5. Be brief and vivid. A sentence or three is plenty.`;
+
+/** Format retrieved chunks into a labelled CONTEXT block for the prompt. */
+export function buildContext(chunks: RetrievedChunk[]): string {
+  return chunks.map((c) => `[from: ${c.source}]\n${c.text}`).join("\n\n");
+}
+
+/** Map a source label to a page the visitor can open for more. */
+function hrefForSource(source: string): string | undefined {
+  const s = source.toLowerCase();
+  if (s.includes("résumé") || s.includes("resume")) return "/resume";
+  if (s.includes("about") || s.includes("phoebe")) return "/about";
+  return "/projects";
+}
+
+/** Unique source citations for the retrieved chunks (deduped, order preserved). */
+export function citationsFromChunks(chunks: RetrievedChunk[]): Citation[] {
+  const seen = new Set<string>();
+  const citations: Citation[] = [];
+  for (const c of chunks) {
+    if (seen.has(c.source)) continue;
+    seen.add(c.source);
+    citations.push({ source: c.source, score: c.score, href: hrefForSource(c.source) });
   }
+  return citations;
+}
 
-  // TODO (Phase 3): build the grounded prompt from `chunks` and call Gemini.
-  return {
-    answer: "Grounded answer would appear here.",
-    citations: chunks.map((c) => ({ source: c.source, snippet: c.text, score: c.score })),
-    grounded: true,
-    stubbed: true,
-  };
+/**
+ * Start a grounded, streaming answer. Returns the AI SDK stream result; the route
+ * pumps `result.textStream` to the client. Low maxOutputTokens keeps answers short
+ * and well under the free-tier token budget.
+ */
+export function answerStream(opts: {
+  question: string;
+  chunks: RetrievedChunk[];
+  house?: House;
+}) {
+  const context = buildContext(opts.chunks);
+  const houseNote =
+    opts.house && opts.house !== "neutral"
+      ? `\n\n(The visitor has been sorted into ${opts.house}; you may lightly colour your tone to that house, but never change the facts.)`
+      : "";
+
+  return streamText({
+    model: google(CHAT_MODEL),
+    system: SYSTEM_PROMPT,
+    prompt: `CONTEXT:\n${context}${houseNote}\n\nVisitor's question: ${opts.question}`,
+    temperature: 0.6,
+    maxOutputTokens: 260,
+  });
 }
