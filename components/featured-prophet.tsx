@@ -106,7 +106,7 @@ export function FeaturedProphet() {
       {/* Wrapper height = spread-on-entry + a short pinned hold before release.
           Phones: a shorter sticky = less empty space above/below the papers. */}
       <div ref={scrollRef} className="relative h-[52vh] sm:h-[130vh]">
-        <div className="sticky top-0 flex h-[70svh] items-center overflow-hidden sm:h-[100svh]">
+        <div className="sticky top-0 flex h-[70svh] items-center overflow-visible sm:h-[100svh]">
           <div className="absolute inset-0">
             <ProphetScene
               progressRef={progressRef}

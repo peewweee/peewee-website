@@ -16,7 +16,7 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
  * 0.18 ≈ 480px wide, 0.23 ≈ 610px, 0.28 ≈ 745px (desktop). This is THE knob to
  * turn to resize them; the fan-out spread below scales with it automatically.
  */
-const HTML_SCALE = 0.3;
+const HTML_SCALE = 0.25;
 
 /**
  * Phones (viewport < 640px) get smaller papers so the fan-out stays inside the
@@ -93,7 +93,9 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
     const fan = spread * (scaleForVw(window.innerWidth) / 0.18);
 
     if (front.current) {
-      front.current.position.set(lerp(0.08, 0.7, t) * fan, lerp(0.0, -0.12, t) + lift, 0.06);
+      // x offsets are symmetric with the back paper (±same values) so the pair's
+      // midpoint stays exactly at canvas centre at every zoom — see back paper below.
+      front.current.position.set(lerp(0.09, 0.715, t) * fan, lerp(0.0, -0.12, t) + lift, 0.06);
       front.current.rotation.set(
         lerp(0.04, 0.08, t),
         lerp(-0.015, -0.04, t),
@@ -101,7 +103,7 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
       );
     }
     if (back.current) {
-      back.current.position.set(lerp(-0.1, -0.73, t) * fan, lerp(0.13, 0.22, t) + lift, -0.06);
+      back.current.position.set(lerp(-0.09, -0.715, t) * fan, lerp(0.13, 0.22, t) + lift, -0.06);
       back.current.rotation.set(
         lerp(0.04, 0.08, t),
         lerp(0.015, 0.04, t),
@@ -164,7 +166,9 @@ export function ProphetScene({
       dpr={[1, 2]}
       camera={{ position: [0, 0, 6], fov: 34 }}
       gl={{ antialias: true, alpha: true }}
-      className="!absolute inset-0"
+      // !overflow-visible defeats R3F's inline `overflow: hidden` so the papers
+      // can fan out past the canvas/container edges without being clipped.
+      className="!absolute inset-0 !overflow-visible"
     >
       <ReadySignal onReady={onReady} />
       <Papers progressRef={progressRef} />
