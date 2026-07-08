@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
+import { navItems } from "@/lib/site";
 import { useLeaveReveal } from "@/components/page-reveal";
 
 /**
@@ -21,6 +22,10 @@ export function BackToCastle() {
   const leavingRef = React.useRef(false);
 
   if (pathname === "/") return null;
+
+  // Only pages that ARE a castle tower get the zoom-in + iris transition. Pages
+  // with no tower (e.g. /resume) just open the castle in its default view.
+  const hasTower = navItems.some((item) => item.href === pathname);
 
   const go = () => {
     if (leavingRef.current) return;
@@ -39,6 +44,8 @@ export function BackToCastle() {
     <Link
       href="/"
       onClick={(e) => {
+        // No tower for this page → let the link navigate normally (no animation).
+        if (!hasTower) return;
         e.preventDefault();
         go();
       }}
