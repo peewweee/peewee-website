@@ -12,20 +12,20 @@ export const metadata: Metadata = {
 };
 
 const skills = [
+  "LLM integration",
   "Retrieval-Augmented Generation",
   "Vector search",
   "Prompt engineering",
-  "LLM integration",
-  "Full-stack web (Next.js, Spring Boot)",
-  "PostgreSQL · Redis",
-  "UI/UX design",
+  "Full-stack",
+  "PostgreSQL",
+  "Caching",
 ];
 
 const pipeline = [
   {
     step: "Embed",
     detail:
-      "My résumé, projects, and personal facts are chunked and embedded with Gemini.",
+      "My experience, projects, and personal facts are chunked and embedded by an AI model.",
   },
   {
     step: "Index",
@@ -40,12 +40,12 @@ const pipeline = [
   {
     step: "Answer",
     detail:
-      "Gemini Flash-Lite streams a reply grounded only in the retrieved text, with citations.",
+      "A language model returns a reply grounded only in the retrieved text, with citations.",
   },
   {
     step: "Protect",
     detail:
-      "Upstash Redis caching + per-visitor rate-limiting keep it fast and free to run.",
+      "A caching layer + per-visitor rate-limiting keep it fast and free to run.",
   },
 ];
 
@@ -53,26 +53,11 @@ export default function AboutPage() {
   return (
     <div className="container space-y-16 py-12 sm:py-16">
       <PageHeader
-        eyebrow="The Study"
-        title="The wizard behind it"
-        lede="I'm Phoebe — a graduating BS Computer Engineering student at PUP Manila, aiming squarely at AI Engineering. I like turning fuzzy, unstructured problems into shipped, grounded systems."
+        eyebrow="Potions"
+        title="The Magic Behind the Sorting Hat"
       />
 
       <section className="grid gap-10 md:grid-cols-2">
-        <div className="space-y-4 text-foreground-muted">
-          <h2 className="font-display text-2xl font-bold text-foreground">My approach</h2>
-          <p>
-            I have hands-on AI experience — RAG, vector search, and prompt engineering —
-            but only a few standalone AI projects. So I made the website itself the proof:
-            the Sorting Hat is a real production AI feature, not a line on a list.
-          </p>
-          <p>
-            The guiding principle here is simple: the theme is a wrapper; the substance is
-            real. The magic earns attention; the engineering keeps it.
-          </p>
-          {/* TODO (Phoebe): personalize — a sentence or two in your own voice, a photo,
-              and anything about what you're looking for next. */}
-        </div>
 
         <div>
           <h2 className="font-display text-2xl font-bold text-foreground">Skills</h2>
@@ -92,13 +77,13 @@ export default function AboutPage() {
         className="rounded-card border border-border bg-surface p-6 sm:p-10"
       >
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-text">
-          Behind the Magic
+          How the Chatbot Works
         </p>
         <h2
           id="behind-magic"
           className="mt-2 font-display text-2xl font-bold text-foreground"
         >
-          How the Sorting Hat answers
+          The RAG Pipeline
         </h2>
         <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {pipeline.map((p, i) => (
@@ -118,14 +103,6 @@ export default function AboutPage() {
         </ol>
       </section>
 
-      <section className="flex flex-wrap gap-3">
-        <Button asChild>
-          <Link href="/projects">See the work</Link>
-        </Button>
-        <Button asChild variant="secondary">
-          <Link href="/resume">Read the resume</Link>
-        </Button>
-      </section>
     </div>
   );
 }

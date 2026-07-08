@@ -15,10 +15,6 @@ export const maxDuration = 30;
 
 const askSchema = z.object({
   question: z.string().min(1, "Ask a question.").max(500),
-  // House never changes grounding — it only lightly flavours tone.
-  house: z
-    .enum(["neutral", "gryffindor", "slytherin", "ravenclaw", "hufflepuff"])
-    .optional(),
 });
 
 /** In-character messages so the visitor never sees a raw error. */
@@ -89,7 +85,7 @@ export async function POST(req: Request) {
       { status: 422 },
     );
   }
-  const { question, house } = parsed.data;
+  const { question } = parsed.data;
 
   const { id, cookieId, isNew } = identify(req);
   const cookie = isNew
@@ -122,7 +118,7 @@ export async function POST(req: Request) {
   const citations = citationsFromChunks(chunks);
   let answer = "";
   try {
-    answer = await generateAnswer({ question, chunks, house });
+    answer = await generateAnswer({ question, chunks });
   } catch (err) {
     // Logged to Vercel runtime logs; the visitor sees the in-character fallback.
     console.error("[hat] generation failed:", errDetail(err));

@@ -21,15 +21,3 @@ export interface NavItem {
   /** A single emoji/symbol icon. */
   glyph: string;
 }
-
-/** A house accent-theme definition (mirrors the style guide's four houses). */
-export interface HouseTheme {
-  key: House;
-  name: string;
-  accent: string;
-  accent2: string;
-  accentText: string;
-  accentInk: string;
-  /** Raw "r, g, b" triplet for use inside rgba(). */
-  glow: string;
-}

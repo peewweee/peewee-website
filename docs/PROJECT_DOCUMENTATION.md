@@ -7,7 +7,7 @@
 | **Owner**         | Phoebe Rhone Gangoso — graduating BS Computer Engineering, PUP Manila                                                                                                                                            |
 | **Career target** | AI Engineering roles                                                                                                                                                                                             |
 | **Domain**        | To be decided — skipped for now                                                                                                                                                                                  |
-| **Status**        | Build in progress — content site + 3D castle live and exceeding the original plan; the Great Hall (bio, Tech Stack, Experience) and the 3D "Daily Prophet" featured section are built; **seven** projects on the Projects page (six live, FairySplit WIP). **Phase 3 is essentially done:** the Ask-the-Hat RAG chat and the hardened contact form are **live** (a chatbot only); Phase 4 (atmosphere) is still stubbed. ⚠ `lib/rag/index.json` needs a re-ingest (`npm run ingest`) and `resume.pdf` is missing — see §12.                                                                                                                                                                          |
+| **Status**        | Live & deployed on Vercel — content site + 3D castle exceeding the original plan; the Great Hall (bio, Tech Stack, Experience) and the 3D "Daily Prophet" featured section are built; **seven** projects on the Projects page (six live, FairySplit WIP). **Phase 3 is essentially done:** the Ask-the-Hat RAG chat and the hardened contact form are **live** (a chatbot only); Phase 4 (atmosphere) is done — wand cursor + music toggle are live. What remains is Phase-5 polish (SEO/OG, sitemap, robots, analytics) — see §12.                                                                                                                                                                          |
 | **This document** | The brief for the design phase and the build. Covers concept, audience, sitemap, features, tech stack, architecture, plan, and design direction. A ready-to-paste prompt for the design system is in Appendix A. |
 
 > **Note on the name:** the owner name above is taken from the resume (Phoebe Rhone Gangoso). Swap it everywhere if the site should carry a different name. The site config also uses the nickname **"Peewee"** and the on-site role label **"Software & AI Developer."**
@@ -75,18 +75,18 @@ The Sorting Hat is an AI **chatbot** that answers questions about me — and it 
 
 **Guardrails.** Answers are strictly grounded in my data; the Hat politely refuses off-topic questions; the API key stays server-side; a spend cap + caching + rate-limiting protect the public endpoint.
 
-> **Build status:** the Hat is **live** — `/api/ask` retrieves over a committed local index and streams a grounded Gemini answer with citations. See §12.
+> **Build status:** **live and deployed** — `/api/ask` retrieves over a committed local index and returns a grounded Gemini `gemini-2.5-flash` answer (non-streaming) with citations. See §12.
 
 ### 4.3 Background music (wizarding ambience)
 
 A looping orchestral "wizarding" ambience with a visible, themed toggle.
 
-- **Default OFF.** Audio starts only on a user gesture (browser autoplay policies block sound otherwise). Modest volume. The preference is remembered between visits.
+- **Autoplay-safe.** Playback begins on the visitor's first click/keypress (browsers block autoplay), fades in to a modest volume, loops, and remembers the on/off choice between visits. (As built it defaults on — one click silences it.)
 - A **visible, animated control** (e.g., a glowing musical rune) to mute/unmute; keyboard-accessible; the control's animation respects "reduced motion."
 - **Licensing (important):** use a royalty-free / Creative Commons track that _evokes_ the vibe — **not** the copyrighted Harry Potter film score. _(Practical guidance, not legal advice.)_
-- **Tech:** Howler.js for reliable cross-browser playback and fade in/out.
+- **Tech:** the native HTML5 `Audio` element — looping playback with a fade in/out (no external audio library).
 
-> **Build status:** currently a **UI-only stub** — Howler and the audio track aren't added yet. See §12.
+> **Build status:** **live** — real looping playback of `public/audio/ambience.mp3` with fade in/out, autoplay-safe (starts on the visitor's first interaction), and the on/off choice is remembered. See §12.
 
 ### 4.4 Wand cursor
 
@@ -96,6 +96,8 @@ The pointer becomes a wand with a subtle sparkle / ember trail; hovering an inte
 - **Never interferes with clicking** — the visual layer is `pointer-events: none`.
 - **Respects "reduced motion"** (no trail / minimal) and offers an **off switch** to revert to the normal cursor for accessibility.
 - Kept **lightweight** — capped particle count, driven by `requestAnimationFrame`.
+
+> **Build status:** **live** — the full wand SVG (eased follow) + capped 12-spark trail + "cast" flourish over interactive elements, with an off-switch (`WandToggle`), desktop-only and reduced-motion aware.
 
 ### 4.5 Projects — the "Library" (seven projects, linking to live work)
 
@@ -135,14 +137,14 @@ The **Great Hall** (`/great-hall`, the "Home" nav item) is the welcome/landing c
 
 **The Sorting Hat (AI)**
 
-- **Vercel AI SDK** — one provider-agnostic interface with token streaming.
-- **Google Gemini Flash-Lite** — generates answers **and** provides embeddings for retrieval, from a single key.
+- **Vercel AI SDK** — one provider-agnostic interface for the Gemini calls (`generateText`).
+- **Google Gemini 2.5 Flash** — generates answers; **`gemini-embedding-001`** provides embeddings for retrieval (one key).
 - **Local embedded index** (`lib/rag/index.json`) — Gemini embeddings committed to the repo and ranked in-memory by cosine similarity; **no vector DB**. Rebuilt by `npm run ingest`.
 - **Upstash Redis + @upstash/ratelimit** — caching and per-visitor rate limits to protect the public endpoint.
 
 **Atmosphere**
 
-- **Howler.js** — background music control.
+- **Native HTML5 `Audio`** — looping background music with fade in/out (no external audio library).
 - **Custom wand-cursor component** — lightweight DOM/canvas + CSS, with reduced-motion and off-switch support.
 
 **Content & contact**
@@ -154,7 +156,7 @@ The **Great Hall** (`/great-hall`, the "Home" nav item) is the welcome/landing c
 
 - **Vercel** (custom domain to be decided later), with optional **Vercel Analytics**.
 
-Everything runs on free tiers. The only possible spend is Gemini once the project leaves the free tier — on Flash-Lite that is roughly ₱15–₱60/month for normal portfolio traffic (pay-as-you-go, with a hard spend cap available).
+Everything runs on free tiers. The only possible spend is Gemini once the project leaves the free tier — on `gemini-2.5-flash` that stays pocket change at portfolio traffic (pay-as-you-go, with a hard spend cap available).
 
 ---
 
@@ -168,8 +170,8 @@ Everything runs on free tiers. The only possible spend is Gemini once the projec
 2. Request hits **`/api/ask`** — a Vercel serverless route where the API key stays hidden.
 3. **Upstash Redis** applies a per-visitor rate limit and serves a cached answer if one exists.
 4. The query is embedded and matched by in-memory cosine similarity against the **local index** (`lib/rag/index.json`) to retrieve the most relevant chunks.
-5. **Gemini Flash-Lite** (via the Vercel AI SDK) composes an answer grounded **only** in the retrieved text.
-6. The answer streams back to the Hat with **source citations**.
+5. **Gemini 2.5 Flash** (via the Vercel AI SDK) composes an answer grounded **only** in the retrieved text.
+6. The answer is returned to the Hat (non-streaming) with **source citations**.
 
 ---
 
@@ -178,8 +180,8 @@ Everything runs on free tiers. The only possible spend is Gemini once the projec
 0. **Scaffold** — Next.js + TS + Tailwind, theme tokens (house colors), base layout, deploy a "hello world" to Vercel on the domain.
 1. **Content site** — the four project pages, About, resume download, working contact form. _This alone is already a real portfolio._
 2. **3D nav hub** — source + optimize the castle model, build the r3f scene, glowing clickable towers → routes, camera transitions, 2D/mobile fallback + accessible menu.
-3. **The Hat** — ✅ ingest content → local `index.json` (`npm run ingest`); `/api/ask` with retrieval + Gemini streaming + citations; rate-limit & cache. **Remaining:** the optional live "Behind the Magic" panel.
-4. **Atmosphere** — background music (Howler) + wand cursor, both with visible toggles and accessibility support.
+3. **The Hat** — ✅ ingest content → local `index.json` (`npm run ingest`); `/api/ask` with retrieval + Gemini generation (non-streaming) + citations; rate-limit & cache. **Remaining:** the optional live "Behind the Magic" panel.
+4. **Atmosphere** — ✅ background music (native `Audio` playing `ambience.mp3`, fade, gesture-safe) + the sparkle-trail wand cursor, both with visible toggles + accessibility.
 5. **Polish** — accessibility pass, performance budget (Lighthouse), reduced-motion variants, SEO / OG images, analytics.
 
 Content first means there is always a shippable portfolio; the 3D, AI, and atmosphere layer on top without blocking it.
@@ -281,7 +283,7 @@ The **design system owns everything in HTML/CSS** — components, the 2D fallbac
 
 ## 12. Current build status (vs. the plan)
 
-_Phases 1–2 are done and exceed the plan. **Phase 3 is essentially done:** the Ask-the-Hat RAG chat and the hardened contact form are live (a chatbot only). Phase 4 (atmosphere) is still stubbed. ⚠ Immediate: `lib/rag/index.json` is truncated/stale — regenerate it with `npm run ingest`, or `next build` / typecheck will fail._
+_Phases 1–2 are done and exceed the plan. **Phase 3 is essentially done:** the Ask-the-Hat RAG chat and the hardened contact form are live (a chatbot only). Phase 4 (atmosphere) is done, and the site is **deployed and live on Vercel** with all env keys set. What remains is Phase-5 polish (SEO/OG, sitemap, robots, analytics) and an accessibility/Lighthouse pass._
 
 **Changed from the plan**
 
@@ -297,17 +299,16 @@ _Phases 1–2 are done and exceed the plan. **Phase 3 is essentially done:** the
 
 **Now delivered (since the plan was written)**
 
-- **Ask-the-Hat RAG is live.** `/api/ask` embeds the question, cosine-ranks the top chunks of a committed **local index** (`lib/rag/index.json` — no vector DB), and streams a grounded, in-character Gemini `gemini-2.5-flash-lite` answer with citations; order is **rate-limit → cache → model**. — `app/api/ask/route.ts`, `lib/rag/`
+- **Ask-the-Hat RAG is live.** `/api/ask` embeds the question, cosine-ranks the top chunks of a committed **local index** (`lib/rag/index.json` — no vector DB), and returns a grounded, in-character Gemini `gemini-2.5-flash` answer (non-streaming) with citations; order is **rate-limit → cache → model**. — `app/api/ask/route.ts`, `lib/rag/`
 - **Contact form is hardened + wired.** `/api/contact` runs server-side Zod, an MX check, a honeypot, Cloudflare Turnstile, a per-IP rate limit, HTML-escaping, and Resend delivery (sends once `RESEND_API_KEY` is set). — `app/api/contact/route.ts`
+- **Atmosphere is live.** The **wand cursor** (wand SVG with an eased follow, a capped 12-spark trail, a "cast" flourish over interactive elements, an off-switch, desktop-only + reduced-motion aware) and the **music toggle** (looping HTML5 `Audio` with fade, autoplay-safe, persisted) are both built. — `components/atmosphere/`
+- **Deployed to Vercel.** The site is live on Vercel with all env keys set (Gemini, Upstash Redis, Resend, Cloudflare Turnstile).
 
 **Still to do**
 
-- **⚠ Regenerate the RAG index (build blocker).** `lib/rag/index.json` is truncated (an interrupted ingest) and stale vs. `content/data.md` — run `npm run ingest` and commit it, or `next build` / typecheck fail. — `lib/rag/index.json`
-- **"Behind the Magic" is a static summary (now accurate).** The About-page panel correctly describes the live pipeline (embed → local index → retrieve → Gemini Flash-Lite → cache/rate-limit). Turning it into a live/data-driven panel is an optional nice-to-have. — `app/about/page.tsx`
-- **Background music is a stub.** Howler isn't installed and there's no audio file — the toggle is UI-only. — `components/atmosphere/music-toggle.tsx`
-- **Wand cursor is a preview.** A single glowing follower dot, not the planned sparkle/ember trail + "cast" flourish. — `components/atmosphere/wand-cursor.tsx`
-- **`resume.pdf` is missing.** The Resume page links `/resume.pdf`, but no such file exists in `public/`, so the download is broken. — `app/resume/page.tsx`
-- **Polish (Phase 5) not started.** No OG image, `app/sitemap.ts`, `app/robots.ts`, or web analytics; accessibility + Lighthouse pass pending; not yet deployed to Vercel (no domain).
+- **Phase 5 polish.** Still to add: an OG/social image, `app/sitemap.ts`, `app/robots.ts`, and web analytics; an accessibility + Lighthouse pass is also pending.
+- **"Behind the Magic" is a static summary (accurate).** The About-page panel correctly describes the live pipeline (embed → local index → retrieve → Gemini 2.5 Flash → cache/rate-limit). Making it a live/data-driven panel is an optional nice-to-have. — `app/about/page.tsx`
+- **Optional cleanup.** Remove the inert Get-Sorted `house` param still in `app/api/ask/route.ts` + `lib/rag/ask.ts`; add `gray-matter` as a direct dev-dependency (it's currently transitive).
 
 ---
 

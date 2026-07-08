@@ -1,5 +1,3 @@
-import type { House } from "@/lib/types";
-
 /** A chunk of source material (resume / project notes) prepared for embedding. */
 export interface SourceChunk {
   /** Stable id, e.g. "aura#3". */
@@ -38,8 +36,6 @@ export interface Citation {
 /** Request body for POST /api/ask. */
 export interface AskRequest {
   question: string;
-  /** Optional house context to flavor tone (never changes grounding). */
-  house?: House;
 }
 
 /** Response from the Sorting Hat. */

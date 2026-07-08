@@ -12,7 +12,7 @@ interactive 3D castle that serves as the navigation.
 castle navigation hub (React Three Fiber), a fleshed-out **Great Hall** (bio, Tech Stack,
 Experience, and a 3D "Daily Prophet" featured section), and **seven real projects** that link
 out to their live sites. The **"Ask the Sorting Hat" RAG chat is live** (Gemini + a local
-embedded index — see [Sorting Hat (RAG)](#sorting-hat-rag)); the atmosphere effects (Phase 4) remain clean, typed **stubs**.
+embedded index — see [Sorting Hat (RAG)](#sorting-hat-rag)); the atmosphere effects (music + wand cursor) are **live**; the site is **deployed on Vercel**.
 
 ---
 
@@ -33,7 +33,7 @@ npm run typecheck    # tsc --noEmit
 npm run format       # Prettier (write)
 ```
 
-No API keys are required to run the site locally. The AI and email features are stubbed (see
+No API keys are required to run the site locally — the Hat replies in-character until you add `GEMINI_API_KEY` + run `npm run ingest`, and email is stubbed until a Resend key is set (see
 [Environment](#environment-variables)).
 
 ---
@@ -108,13 +108,13 @@ No API keys are required to run the site locally. The AI and email features are 
 - The **footer** stacks nav + contacts vertically with a **Resume** column, and the **"Behind
   the Magic"** section (on About) was slimmed to concise professional copy.
 
-### Scaffolded stubs (clean typed interfaces + TODOs)
+### Feature status (AI + atmosphere)
 
 | Area                  | Status                                                  | Notes                                                                                 |
 | --------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Ask the Hat (RAG)     | ✅ **Live** — [`lib/rag`](lib/rag), [`/api/ask`](app/api/ask/route.ts) | Gemini Flash-Lite + local embedded index; streaming, in-character, cited. See [Sorting Hat (RAG)](#sorting-hat-rag). |
-| Music (Phase 4)       | Stub — [`MusicToggle`](components/atmosphere/music-toggle.tsx) | Default **OFF**, persisted, reduced-motion aware. No audio yet.                       |
-| Wand cursor (Phase 4) | Stub — [`WandCursor`](components/atmosphere/wand-cursor.tsx)   | Desktop-only, reduced-motion aware, off switch. Lightweight follower preview.         |
+| Ask the Hat (RAG)     | ✅ **Live** — [`lib/rag`](lib/rag), [`/api/ask`](app/api/ask/route.ts) | Gemini 2.5 Flash + local embedded index; non-streaming, in-character, cited. See [Sorting Hat (RAG)](#sorting-hat-rag). |
+| Music (Phase 4)       | **Live** — [`MusicToggle`](components/atmosphere/music-toggle.tsx) | Looping HTML5 `Audio` (`public/audio/ambience.mp3`) + fade, autoplay-safe, persisted. |
+| Wand cursor (Phase 4) | **Live** — [`WandCursor`](components/atmosphere/wand-cursor.tsx) | Wand + capped sparkle trail + "cast" flourish; off-switch, desktop-only, reduced-motion aware. |
 
 ---
 
@@ -131,7 +131,7 @@ app/
   layout.tsx  page.tsx  not-found.tsx
 components/
   ui/                     # button, input, textarea, label, badge, card, dialog, border-beam
-  atmosphere/             # atmosphere wrapper + music-toggle + wand-cursor (Phase 4 stubs)
+  atmosphere/             # music-toggle + wand-cursor (live) + wrapper
   castle/                 # castle-hub + castle-scene (R3F) + castle-fallback (2D)
   featured-prophet.tsx newspaper.tsx prophet-scene.tsx   # 3D "Daily Prophet" featured section
   tech-stack.tsx experience.tsx                          # Great Hall sections
@@ -141,7 +141,7 @@ components/
 content/projects/         # seven MDX projects (six live + FairySplit WIP)
 lib/
   rag/                    # ingest / retrieve / ask (live) + local index.json
-  site.ts houses.ts projects.ts types.ts utils.ts use-preference.ts tokens.ts
+  site.ts projects.ts types.ts utils.ts use-preference.ts tokens.ts
 public/projects/          # seven cover images
 docs/                     # PROJECT_DOCUMENTATION.md + Wizarding Design System.html (source of truth)
 contentlayer.config.ts  tailwind.config.ts  components.json
@@ -202,8 +202,8 @@ and voiced in character (it politely declines anything off-topic).
    [`lib/rag/index.json`](lib/rag/index.json). No external vector DB.
 3. **Ask** — [`/api/ask`](app/api/ask/route.ts) rate-limits (Upstash Redis, optional) →
    returns a cached answer if present → embeds the question and cosine-ranks the top 3–4
-   chunks ([`lib/rag/retrieve.ts`](lib/rag/retrieve.ts)) → **streams** a short, in-character
-   Gemini Flash-Lite answer grounded only in those chunks, with source citations.
+   chunks ([`lib/rag/retrieve.ts`](lib/rag/retrieve.ts)) → **returns** a short, in-character
+   Gemini 2.5 Flash answer grounded only in those chunks, with source citations.
 
 **Setup**
 
@@ -297,13 +297,13 @@ and fallback all stay as-is.
 
 **Phase 3 — the Hat (AI).** Add `GEMINI_API_KEY` + Upstash. Implement
 [`lib/rag`](lib/rag): ✅ already done — local `index.json` + `/api/ask` retrieval + grounded
-Gemini answer with **streaming** (Vercel AI SDK) and citations; add Redis **rate-limit +
+Gemini answer (non-streaming, Vercel AI SDK) and citations; add Redis **rate-limit +
 cache**. Then build the "Behind the
 Magic" panel.
 
-**Phase 4 — atmosphere.** Wire **Howler.js** into `MusicToggle` (royalty-free/CC track,
-**not** the film score; start on user gesture; fade in/out). Upgrade `WandCursor` to the
-capped ember/sparkle trail + "cast" flourish. Both keep their toggles + accessibility.
+**Phase 4 — atmosphere.** ✅ Done — `MusicToggle` plays a looping HTML5 `Audio` track with
+fade in/out (autoplay-safe), and `WandCursor` is the full wand + capped sparkle trail +
+"cast" flourish; both keep their toggles + accessibility. The `public/audio/ambience.mp3` track is in place.
 
 **Phase 5 — polish.** Accessibility pass, Lighthouse budget, OG images + per-page
 metadata, analytics.

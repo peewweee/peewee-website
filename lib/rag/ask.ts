@@ -1,6 +1,5 @@
 import { generateText } from "ai";
 
-import type { House } from "@/lib/types";
 import { google, CHAT_MODEL } from "./config";
 import type { Citation, RetrievedChunk } from "./types";
 
@@ -53,18 +52,13 @@ export function citationsFromChunks(chunks: RetrievedChunk[]): Citation[] {
 export async function generateAnswer(opts: {
   question: string;
   chunks: RetrievedChunk[];
-  house?: House;
 }): Promise<string> {
   const context = buildContext(opts.chunks);
-  const houseNote =
-    opts.house && opts.house !== "neutral"
-      ? `\n\n(The visitor has been sorted into ${opts.house}; you may lightly colour your tone to that house, but never change the facts.)`
-      : "";
 
   const { text, finishReason } = await generateText({
     model: google(CHAT_MODEL),
     system: SYSTEM_PROMPT,
-    prompt: `CONTEXT:\n${context}${houseNote}\n\nVisitor's question: ${opts.question}`,
+    prompt: `CONTEXT:\n${context}\n\nVisitor's question: ${opts.question}`,
     temperature: 0.6,
     maxOutputTokens: 260,
     // One retry only — hammering on a quota (429) just burns more of it.
