@@ -69,7 +69,7 @@ The landing page (`/`) is a full-screen, low-poly night-time castle — and it *
 The Sorting Hat is an AI **chatbot** that answers questions about me — and it doubles as a portfolio piece:
 
 1. **Ask the Hat (RAG).** Visitors ask about me; the Hat answers **only** from my resume + project write-ups, with source citations (e.g., "from: Aura"). Demonstrates retrieval-augmented generation, grounding, and prompt engineering. _This is the flagship._
-2. **Behind the Magic (transparency).** A short "how it works" summary of the real pipeline (embeddings → vector search → LLM, plus caching and rate-limiting) — what turns "cute chatbot" into "this person can ship AI." _Currently a slimmed static section on the **About** page; the live, data-driven panel arrives with Phase 3._
+2. **Behind the Magic (transparency).** A short "how it works" summary of the real pipeline (embeddings → vector search → LLM, plus caching and rate-limiting) — what turns "cute chatbot" into "this person can ship AI." _A static summary on the **About** page that accurately describes the real pipeline; a live/data-driven version is an optional future touch._
 
 **Inline on its own page.** The Hat is a full inline chat on its own route (**`/sorting-hat`**, "Ask the Sorting Hat") — the old floating "Ask the Hat" button was removed from every page. Visitors ask anything about me and it answers from **`/api/ask`** (RAG), grounded in my data and politely declining anything off-topic. It's a chatbot — no modes, quizzes, or house-sorting.
 
@@ -303,7 +303,7 @@ _Phases 1–2 are done and exceed the plan. **Phase 3 is essentially done:** the
 **Still to do**
 
 - **⚠ Regenerate the RAG index (build blocker).** `lib/rag/index.json` is truncated (an interrupted ingest) and stale vs. `content/data.md` — run `npm run ingest` and commit it, or `next build` / typecheck fail. — `lib/rag/index.json`
-- **"Behind the Magic" is static _and_ inaccurate.** The About-page copy still says vectors "live in Upstash Vector" — wrong; it's a local index. Fix the copy, then build the live panel. — `app/about/page.tsx`
+- **"Behind the Magic" is a static summary (now accurate).** The About-page panel correctly describes the live pipeline (embed → local index → retrieve → Gemini Flash-Lite → cache/rate-limit). Turning it into a live/data-driven panel is an optional nice-to-have. — `app/about/page.tsx`
 - **Background music is a stub.** Howler isn't installed and there's no audio file — the toggle is UI-only. — `components/atmosphere/music-toggle.tsx`
 - **Wand cursor is a preview.** A single glowing follower dot, not the planned sparkle/ember trail + "cast" flourish. — `components/atmosphere/wand-cursor.tsx`
 - **`resume.pdf` is missing.** The Resume page links `/resume.pdf`, but no such file exists in `public/`, so the download is broken. — `app/resume/page.tsx`

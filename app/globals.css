@@ -283,6 +283,97 @@
 }
 
 /* =========================================================================
+   Wand cursor — the Wizarding design-system wand + native-cursor hide
+   (keyframes: burst / castBurst / sparkle / trailDrift — ported verbatim)
+   ========================================================================= */
+
+/* While the wand is on, hide the native cursor everywhere (the wand replaces it). */
+html.wand-active,
+html.wand-active * {
+  cursor: none !important;
+}
+
+/* Tip sparkle: a gentle "burst" idle, swelling to "castBurst" over interactive
+   targets (links, buttons, inputs). */
+.wand-tipgroup {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: burst 1.6s ease-in-out infinite;
+}
+.wand-tip.wand-cast .wand-tipgroup {
+  animation: castBurst 1.3s ease-in-out infinite;
+}
+.wand-tip {
+  transition: filter 160ms ease;
+}
+.wand-tip.wand-cast {
+  filter: drop-shadow(0 0 6px rgba(var(--accent-glow), 0.75));
+}
+
+/* Extra floating sparkles — the "cast" flourish, shown only over interactive targets. */
+.wand-floaters {
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.wand-tip.wand-cast .wand-floaters {
+  opacity: 1;
+}
+
+/* Capped sparkle trail — each recycled spark drifts down-left + fades from the tip. */
+.wand-spark {
+  animation: trailDrift 0.8s ease-out forwards;
+}
+
+@keyframes burst {
+  0%,
+  100% {
+    transform: scale(0.9) rotate(0);
+    opacity: 0.82;
+  }
+  50% {
+    transform: scale(1.14) rotate(45deg);
+    opacity: 1;
+  }
+}
+@keyframes castBurst {
+  0%,
+  100% {
+    transform: scale(1.05) rotate(0);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.45) rotate(50deg);
+    opacity: 1;
+  }
+}
+@keyframes sparkle {
+  0% {
+    transform: scale(0) rotate(0);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(90deg);
+    opacity: 0;
+  }
+}
+@keyframes trailDrift {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-9px, 8px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+/* =========================================================================
    Reduced motion — neutralize every animation/transition (WCAG 2.1 AA)
    ========================================================================= */
 

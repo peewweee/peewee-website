@@ -92,7 +92,7 @@ export default function ResumePage() {
               <Button asChild>
                 <a href="/resume.pdf" download>
                   <Download className="size-4" aria-hidden />
-                  Download résumé (PDF)
+                  Download Resume
                 </a>
               </Button>
             </div>

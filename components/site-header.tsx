@@ -121,25 +121,32 @@ export function SiteHeader() {
                         onClick={(e) => onNavClick(e, item.href)}
                         aria-current={active ? "page" : undefined}
                         className={cn(
-                          "flex items-center gap-3 rounded-field px-3 py-3 text-base font-medium transition-colors",
+                          "rounded-field px-3 py-3 text-base font-medium transition-colors",
                           active
                             ? "bg-surface text-accent-text"
                             : "text-foreground-muted hover:bg-surface hover:text-foreground",
                         )}
                       >
-                        <span aria-hidden className="text-lg">
-                          {item.glyph}
-                        </span>
-                        <span className="flex flex-col">
-                          <span>{item.label}</span>
-                          <span className="text-xs text-foreground-faint">
-                            {item.description}
-                          </span>
-                        </span>
+                        {item.label}
                       </Link>
                     </DialogClose>
                   );
                 })}
+                {/* Resume isn't a castle tower — plain link, appended at the end. */}
+                <DialogClose asChild>
+                  <Link
+                    href="/resume"
+                    aria-current={isActive(pathname, "/resume") ? "page" : undefined}
+                    className={cn(
+                      "rounded-field px-3 py-3 text-base font-medium transition-colors",
+                      isActive(pathname, "/resume")
+                        ? "bg-surface text-accent-text"
+                        : "text-foreground-muted hover:bg-surface hover:text-foreground",
+                    )}
+                  >
+                    Resume
+                  </Link>
+                </DialogClose>
               </nav>
             </DialogContent>
           </Dialog>

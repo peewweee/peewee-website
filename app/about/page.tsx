@@ -24,15 +24,29 @@ const skills = [
 const pipeline = [
   {
     step: "Embed",
-    detail: "Resume + project notes are chunked and embedded with Gemini.",
+    detail:
+      "My résumé, projects, and personal facts are chunked and embedded with Gemini.",
   },
-  { step: "Store", detail: "Vectors live in Upstash Vector, built once at ingest time." },
+  {
+    step: "Index",
+    detail:
+      "The embeddings are committed to a local index file — no external vector database.",
+  },
   {
     step: "Retrieve",
-    detail: "A question is embedded and matched to the closest chunks.",
+    detail:
+      "A question is embedded and matched to the closest chunks by cosine similarity.",
   },
-  { step: "Answer", detail: "Gemini composes a reply grounded only in retrieved text." },
-  { step: "Protect", detail: "Redis caching + rate-limiting guard the public endpoint." },
+  {
+    step: "Answer",
+    detail:
+      "Gemini Flash-Lite streams a reply grounded only in the retrieved text, with citations.",
+  },
+  {
+    step: "Protect",
+    detail:
+      "Upstash Redis caching + per-visitor rate-limiting keep it fast and free to run.",
+  },
 ];
 
 export default function AboutPage() {
@@ -72,7 +86,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Behind the Magic — static summary now; live panel in Phase 3 */}
+      {/* Behind the Magic — static summary of the live RAG pipeline */}
       <section
         aria-labelledby="behind-magic"
         className="rounded-card border border-border bg-surface p-6 sm:p-10"

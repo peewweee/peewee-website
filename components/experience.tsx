@@ -143,9 +143,13 @@ export function Experience() {
   // The beam should travel only as far as the second node, not the whole rail.
   // Measure that node's centre as a fraction of the rail height and cap the fill.
   const [stopFrac, setStopFrac] = React.useState(1);
+  // How far the beam fills, as `stopFrac * beamPct`%. Desktop 90, phones 95
+  // (viewport-keyed, so desktop never changes). Default 90 for SSR.
+  const [beamPct, setBeamPct] = React.useState(90);
 
   React.useEffect(() => {
     const measure = () => {
+      setBeamPct(window.innerWidth < 640 ? 95 : 90);
       const rail = railRef.current;
       const node = stopNodeRef.current;
       if (!rail || !node) return;
@@ -174,7 +178,7 @@ export function Experience() {
   const beamHeight = useTransform(
     scrollYProgress,
     [0, stopFrac],
-    ["0%", `${stopFrac * 90}%`],
+    ["0%", `${stopFrac * beamPct}%`],
   );
 
   return (

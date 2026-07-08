@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { IconType } from "react-icons";
-import { FaGithub, FaLinkedin, FaFacebook, FaEnvelope } from "react-icons/fa6";
+import { FaGithub, FaLinkedin, FaEnvelope } from "react-icons/fa6";
 
 import { siteConfig } from "@/lib/site";
 import { PageHeader } from "@/components/page-header";
@@ -10,7 +10,6 @@ const SOCIAL_ICONS: Record<string, IconType> = {
   LinkedIn: FaLinkedin,
   GitHub: FaGithub,
   Email: FaEnvelope,
-  Facebook: FaFacebook,
 };
 
 export const metadata: Metadata = {

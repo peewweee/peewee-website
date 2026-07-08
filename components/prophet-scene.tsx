@@ -19,12 +19,33 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 const HTML_SCALE = 0.3;
 
 /**
+ * Phones (viewport < 640px) get smaller papers so the fan-out stays inside the
+ * page's side margins as it spreads. The spread scales with this automatically.
+ * Lower = smaller phone papers; desktop always uses HTML_SCALE. Keyed to the
+ * VIEWPORT width (matches the section's `sm:` spacing), never the canvas width.
+ */
+const HTML_SCALE_MOBILE = 0.19;
+const MOBILE_VW = 640;
+/** Fixed phone camera distance so the paper size + fan stay constant while the
+ *  sticky height is tuned for tighter gaps (desktop stays aspect-driven).
+ *  Higher = papers a touch smaller / more side margin. */
+const MOBILE_CAM_Z = 8.6;
+const scaleForVw = (w: number) => (w < MOBILE_VW ? HTML_SCALE_MOBILE : HTML_SCALE);
+
+/**
  * Raise the papers toward the heading (world units up). Higher = smaller gap
  * between the "Projects" title and the papers. ~0.22 ≈ 55px up on desktop and is
  * about the max with the current poses — beyond it the back paper's top clips
  * once it fans out (to go tighter, also lower the back paper's spread `y`).
  */
 const LIFT = 0.22;
+
+/**
+ * Phones only: raise the papers higher (world units up) so they sit closer to the
+ * 'Projects' heading. Larger = closer to the heading; too large starts to clip the
+ * paper tops. Desktop keeps LIFT (viewport-keyed, so desktop never changes).
+ */
+const LIFT_MOBILE = 0.8;
 
 /**
  * Two newspapers that fan apart as `progressRef` goes 0 → 1.
@@ -37,24 +58,42 @@ const LIFT = 0.22;
 function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }) {
   const front = React.useRef<Group>(null);
   const back = React.useRef<Group>(null);
+  // Mobile is decided by the VIEWPORT width (matches the section's sm: spacing),
+  // not the canvas width — the canvas sits in a narrower column than the window.
+  const [vw, setVw] = React.useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1024,
+  );
+  React.useEffect(() => {
+    const onResize = () => setVw(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const scale = scaleForVw(vw);
 
   useFrame((state) => {
     const t = smooth(clamp01(progressRef.current));
     const aspect = state.viewport.aspect;
 
-    // Narrower viewports: spread less and pull the camera back so both papers fit.
-    const spread = Math.min(1, Math.max(0.5, aspect / 1.6));
-    const targetZ = aspect >= 1 ? 6 : lerp(6, 9.6, clamp01((1 - aspect) / 0.6));
+    // Phones: fix the framing (spread + camera) so shrinking the sticky for
+    // tighter gaps doesn't change the paper size or fan. Desktop stays aspect-driven.
+    const isMobile = window.innerWidth < MOBILE_VW;
+    const lift = isMobile ? LIFT_MOBILE : LIFT;
+    const spread = isMobile ? 0.5 : Math.min(1, Math.max(0.5, aspect / 1.6));
+    const targetZ = isMobile
+      ? MOBILE_CAM_Z
+      : aspect >= 1
+        ? 6
+        : lerp(6, 9.6, clamp01((1 - aspect) / 0.6));
     if (Math.abs(state.camera.position.z - targetZ) > 0.001) {
       state.camera.position.z = targetZ;
     }
     // Fan the papers wider as they grow, so bigger HTML_SCALE keeps the same
     // relative overlap (0.18 is the tuning baseline). Only the horizontal
     // separation scales — the tilt and peek stay put.
-    const fan = spread * (HTML_SCALE / 0.18);
+    const fan = spread * (scaleForVw(window.innerWidth) / 0.18);
 
     if (front.current) {
-      front.current.position.set(lerp(0.08, 0.7, t) * fan, lerp(0.0, -0.12, t) + LIFT, 0.06);
+      front.current.position.set(lerp(0.08, 0.7, t) * fan, lerp(0.0, -0.12, t) + lift, 0.06);
       front.current.rotation.set(
         lerp(0.04, 0.08, t),
         lerp(-0.015, -0.04, t),
@@ -62,7 +101,7 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
       );
     }
     if (back.current) {
-      back.current.position.set(lerp(-0.1, -0.73, t) * fan, lerp(0.13, 0.22, t) + LIFT, -0.06);
+      back.current.position.set(lerp(-0.1, -0.73, t) * fan, lerp(0.13, 0.22, t) + lift, -0.06);
       back.current.rotation.set(
         lerp(0.04, 0.08, t),
         lerp(0.015, 0.04, t),
@@ -77,7 +116,7 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
       <group ref={back}>
         <Html
           transform
-          scale={HTML_SCALE}
+          scale={scale}
           zIndexRange={[16, 6]}
           occlude={false}
           style={{ pointerEvents: "none" }}
@@ -90,7 +129,7 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
       <group ref={front}>
         <Html
           transform
-          scale={HTML_SCALE}
+          scale={scale}
           zIndexRange={[40, 26]}
           occlude={false}
           style={{ pointerEvents: "none" }}
