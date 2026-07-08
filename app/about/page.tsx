@@ -25,7 +25,7 @@ const pipeline = [
   {
     step: "Embed",
     detail:
-      "My experience, projects, and personal facts are chunked and embedded by an AI model.",
+      "My experience, projects, and personal facts are chunked and embedded by an embedding model.",
   },
   {
     step: "Index",
@@ -40,7 +40,7 @@ const pipeline = [
   {
     step: "Answer",
     detail:
-      "A language model returns a reply grounded only in the retrieved text, with citations.",
+      "An LLM returns a reply grounded only in the retrieved text, with citations.",
   },
   {
     step: "Protect",
