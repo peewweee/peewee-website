@@ -18,13 +18,14 @@ const FADE_MS = 1000;
 /**
  * MusicToggle — a looping ambient track with fade in/out.
  *
- * Contract kept intact: defaults OFF, remembers the preference, starts only on a
- * user gesture (browser autoplay policy), keyboard-accessible, and its glow
- * animation respects reduced-motion (the audio itself does not — sound isn't
+ * Defaults ON, but browsers block autoplay until a gesture, so playback fades in
+ * on the visitor's first click/keypress (not literally on load). Remembers the
+ * preference (a visitor who turns it off stays off), keyboard-accessible, and its
+ * glow animation respects reduced-motion (the audio itself does not — sound isn't
  * motion). If the file is missing, the toggle still works silently.
  */
 export function MusicToggle({ className }: { className?: string }) {
-  const [on, setOn, mounted] = usePreference("wiz:music", false);
+  const [on, setOn, mounted] = usePreference("wiz:music", true);
   const reduced = usePrefersReducedMotion();
 
   const audioRef = React.useRef<HTMLAudioElement | null>(null);

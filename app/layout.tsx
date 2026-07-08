@@ -11,7 +11,8 @@ import { PortalTransition } from "@/components/portal-transition";
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: `${siteConfig.name} — ${siteConfig.role}`,
+    // Browser tab label — just the short name, no tagline.
+    default: siteConfig.shortName,
     template: `%s · ${siteConfig.shortName}`,
   },
   description: siteConfig.description,
