@@ -5,6 +5,7 @@ import { retrieve } from "@/lib/rag/retrieve";
 import { generateAnswer, citationsFromChunks } from "@/lib/rag/ask";
 import {
   checkRateLimit,
+  reserveDailyCall,
   getCachedAnswer,
   setCachedAnswer,
 } from "@/lib/rag/redis";
@@ -22,7 +23,7 @@ const HAT = {
   notReady:
     "My memory of Phoebe hasn't been woven into the enchantment yet. Once her tale is bound into my brim, I'll answer in full. For now, wander her Projects, About, and Resume.",
   rateLimited:
-    "Even a Sorting Hat must rest... Return on the morrow, and we shall talk again.",
+    "Hmm... a mind far too frantic! You've overwhelmed my ancient magic. Wait one minute for my enchantments to cool down.",
   pondering: "The Hat is pondering... try again in a moment.",
 };
 
@@ -54,6 +55,28 @@ function errDetail(err: unknown): string {
       .slice(0, 600);
   }
   return String(err).slice(0, 600);
+}
+
+/**
+ * True when a generation error looks like Gemini itself being rate-limited or
+ * overloaded (429 / RESOURCE_EXHAUSTED / 503 / overloaded) — the same "overwhelmed,
+ * wait a minute" situation as a visitor over their own limit, so the Hat replies
+ * with the same cooldown message. Any OTHER error keeps the generic fallback.
+ */
+function isOverloadError(err: unknown): boolean {
+  if (err && typeof err === "object") {
+    const code = Number((err as Record<string, unknown>).statusCode);
+    if (code === 429 || code === 503) return true;
+  }
+  const s = errDetail(err).toLowerCase();
+  return (
+    s.includes("resource_exhausted") ||
+    s.includes("too many requests") ||
+    s.includes("rate limit") ||
+    s.includes("overloaded") ||
+    s.includes("unavailable") ||
+    /\b(429|503)\b/.test(s)
+  );
 }
 
 /** A non-streamed text reply (cache hits, in-character notices). */
@@ -103,7 +126,13 @@ export async function POST(req: Request) {
   // 3) No key yet → answer in character rather than erroring.
   if (!hasGeminiKey()) return textReply(HAT.notReady, [], { cookie });
 
-  // 4) Retrieve. Empty index (not ingested) → in-character "not ready".
+  // 4) Global daily budget — a backstop vs IP-rotating bots that slip past the
+  //    per-visitor limit. Cache hits above never reach here, so only Gemini-backed
+  //    requests count; when the cap is hit the Hat gives the same cooldown reply.
+  const budget = await reserveDailyCall();
+  if (!budget.ok) return textReply(HAT.rateLimited, [], { status: 429, cookie });
+
+  // 5) Retrieve. Empty index (not ingested) → in-character "not ready".
   let chunks: RetrievedChunk[];
   try {
     chunks = await retrieve(question, 4);
@@ -112,19 +141,26 @@ export async function POST(req: Request) {
   }
   if (chunks.length === 0) return textReply(HAT.notReady, [], { cookie });
 
-  // 5) Generate a grounded answer (non-streaming — reliable on serverless).
-  //    One short backoff-retry, then a friendly in-character fallback. Errors
-  //    are logged so Vercel's runtime logs surface any Gemini issue.
+  // 6) Generate a grounded answer (non-streaming — reliable on serverless).
+  //    One short backoff-retry inside generateAnswer, then an in-character fallback.
+  //    Errors are logged so Vercel's runtime logs surface any Gemini issue.
   const citations = citationsFromChunks(chunks);
   let answer = "";
+  let overwhelmed = false;
   try {
     answer = await generateAnswer({ question, chunks });
   } catch (err) {
     // Logged to Vercel runtime logs; the visitor sees the in-character fallback.
     console.error("[hat] generation failed:", errDetail(err));
+    // Gemini itself rate-limited/overloaded → the same "wait a minute" cooldown.
+    overwhelmed = isOverloadError(err);
   }
 
-  if (!answer) return textReply(HAT.pondering, [], { cookie });
+  if (!answer) {
+    return overwhelmed
+      ? textReply(HAT.rateLimited, [], { status: 429, cookie })
+      : textReply(HAT.pondering, [], { cookie });
+  }
 
   await setCachedAnswer(question, { answer, citations });
   return textReply(answer, citations, { cookie });
