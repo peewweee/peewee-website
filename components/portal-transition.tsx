@@ -371,9 +371,14 @@ export function PortalTransition() {
       <GLBoundary onFail={() => setBoth(null)}>
         <Canvas
           className="absolute inset-0"
-          dpr={[1, 2]}
+          // Perf only (effect + timing unchanged): cap DPR and drop MSAA on this
+          // fullscreen shader overlay. The iris is a soft, feathered, blurred field
+          // with chromatic aberration, so a lower internal resolution and no
+          // antialias are imperceptible — but far cheaper on weak GPUs / high-DPI
+          // screens, which keeps the enter transition smooth.
+          dpr={[1, 1.5]}
           frameloop="always"
-          gl={{ alpha: true, premultipliedAlpha: false, antialias: true }}
+          gl={{ alpha: true, premultipliedAlpha: false, antialias: false }}
           onCreated={({ gl }) => gl.setClearColor(0x000000, 0)}
         >
           <IrisPass progressRef={progressRef} />

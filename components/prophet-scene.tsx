@@ -93,9 +93,16 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
     const fan = spread * (scaleForVw(window.innerWidth) / 0.18);
 
     if (front.current) {
-      // x offsets are symmetric with the back paper (±same values) so the pair's
-      // midpoint stays exactly at canvas centre at every zoom — see back paper below.
-      front.current.position.set(lerp(0.09, 0.715, t) * fan, lerp(0.0, -0.12, t) + lift, 0.06);
+      // The two papers are exact horizontal MIRRORS of each other (same |x|, same
+      // depth z, mirrored yaw/roll) so the pair is balanced and centred at every
+      // zoom. Stacking (front over back) comes from zIndexRange, not depth — so
+      // equal z=0 keeps them the same on-screen size (no right-heavy bias).
+      // IMPORTANT: the pair's midpoint must stay at x=0 — the camera sits at x=0,
+      // so world x=0 projects to the exact canvas centre in EVERY browser, zoom
+      // level and scroll state. Never add a fixed x nudge here: it maps to a
+      // different pixel offset per viewport (why Chrome looked centred while
+      // Opera GX sat left). Tune balance via the symmetric ±x magnitudes only.
+      front.current.position.set(lerp(0.09, 0.715, t) * fan, lerp(0.0, -0.12, t) + lift, 0);
       front.current.rotation.set(
         lerp(0.04, 0.08, t),
         lerp(-0.015, -0.04, t),
@@ -103,11 +110,11 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
       );
     }
     if (back.current) {
-      back.current.position.set(lerp(-0.09, -0.715, t) * fan, lerp(0.13, 0.22, t) + lift, -0.06);
+      back.current.position.set(lerp(-0.09, -0.715, t) * fan, lerp(0.13, 0.22, t) + lift, 0);
       back.current.rotation.set(
         lerp(0.04, 0.08, t),
         lerp(0.015, 0.04, t),
-        lerp(0.05, 0.1, t),
+        lerp(0.04, 0.1, t),
       );
     }
   });
