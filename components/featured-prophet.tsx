@@ -42,6 +42,22 @@ export function FeaturedProphet() {
   const progressRef = React.useRef(0);
   const invalidateRef = React.useRef<() => void>(() => {});
 
+  // Stage sizing: freeze the 3D stage to the viewport size captured at load, in
+  // FIXED CSS pixels. Viewport units (100svh/130vh) hold a constant PHYSICAL size
+  // under browser (Ctrl) zoom, so the newspaper wouldn't shrink/grow with the rest
+  // of the page. A fixed px height DOES scale with zoom (CSS px scale with zoom), so
+  // the newspaper now zooms in lockstep with the text/icons — smaller when you zoom
+  // out, bigger when you zoom in — while its 3D framing keeps it centred. Captured
+  // at load; desktop only (phones use pinch-zoom, which doesn't hit this).
+  const [stageStyle, setStageStyle] = React.useState<React.CSSProperties>({});
+  const [scrollStyle, setScrollStyle] = React.useState<React.CSSProperties>({});
+  React.useEffect(() => {
+    if (!window.matchMedia("(min-width: 640px)").matches) return;
+    const vh0 = window.innerHeight;
+    setScrollStyle({ height: `${Math.round(vh0 * 1.3)}px` });
+    setStageStyle({ height: `${vh0}px` });
+  }, []);
+
   // Detect WebGL once on the client (null = "not decided yet" → render static).
   React.useEffect(() => {
     try {
@@ -105,8 +121,11 @@ export function FeaturedProphet() {
     <div className="mt-4 sm:mt-1">
       {/* Wrapper height = spread-on-entry + a short pinned hold before release.
           Phones: a shorter sticky = less empty space above/below the papers. */}
-      <div ref={scrollRef} className="relative h-[52vh] sm:h-[130vh]">
-        <div className="sticky top-0 flex h-[70svh] items-center overflow-visible sm:h-[100svh]">
+      <div ref={scrollRef} className="relative h-[52vh] sm:h-[130vh]" style={scrollStyle}>
+        <div
+          className="sticky top-0 flex h-[70svh] items-center overflow-hidden sm:h-[100svh]"
+          style={stageStyle}
+        >
           <div className="absolute inset-0">
             <ProphetScene
               progressRef={progressRef}
@@ -117,9 +136,18 @@ export function FeaturedProphet() {
             />
           </div>
 
+          {/* "View more projects" pinned near the bottom of the stage so it sits
+              just under the papers. Phones need a much larger offset: LIFT_MOBILE
+              raises the papers toward the heading, leaving more dead space at the
+              stage bottom. Raise/lower via the bottom-[..] values (base = mobile,
+              sm: = desktop). z-50 floats it above the papers' Html layers (z ≤ 40). */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-[18svh] z-50 flex justify-center sm:bottom-[12svh]">
+            <div className="pointer-events-auto">
+              <ViewMore />
+            </div>
+          </div>
         </div>
       </div>
-      <ViewMore />
       <ScreenReaderLinks />
     </div>
   );

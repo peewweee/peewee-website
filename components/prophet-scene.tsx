@@ -13,10 +13,12 @@ const smooth = (t: number) => t * t * (3 - 2 * t);
 
 /**
  * Overall size of the newspapers. Bigger value = bigger papers.
- * 0.18 ≈ 480px wide, 0.23 ≈ 610px, 0.28 ≈ 745px (desktop). This is THE knob to
+ * 0.18 ≈ 480px wide, 0.21 ≈ 555px, 0.25 ≈ 665px (desktop). This is THE knob to
  * turn to resize them; the fan-out spread below scales with it automatically.
+ * 0.21 keeps the fully-fanned pair inside the container column on wide screens
+ * (0.25 pushed the front paper past the right margin on full-screen Chrome/Edge).
  */
-const HTML_SCALE = 0.25;
+const HTML_SCALE = 0.21;
 
 /**
  * Phones (viewport < 640px) get smaller papers so the fan-out stays inside the
@@ -93,16 +95,16 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
     const fan = spread * (scaleForVw(window.innerWidth) / 0.18);
 
     if (front.current) {
-      // The two papers are exact horizontal MIRRORS of each other (same |x|, same
-      // depth z, mirrored yaw/roll) so the pair is balanced and centred at every
-      // zoom. Stacking (front over back) comes from zIndexRange, not depth — so
-      // equal z=0 keeps them the same on-screen size (no right-heavy bias).
+      // The two papers are exact MIRRORS of each other — same |x|, same y (level),
+      // same depth z, mirrored yaw/roll — so the pair is balanced and centred at
+      // every zoom. Stacking (front over back) comes from zIndexRange, not depth —
+      // so equal z=0 keeps them the same on-screen size (no right-heavy bias).
       // IMPORTANT: the pair's midpoint must stay at x=0 — the camera sits at x=0,
       // so world x=0 projects to the exact canvas centre in EVERY browser, zoom
       // level and scroll state. Never add a fixed x nudge here: it maps to a
       // different pixel offset per viewport (why Chrome looked centred while
       // Opera GX sat left). Tune balance via the symmetric ±x magnitudes only.
-      front.current.position.set(lerp(0.09, 0.715, t) * fan, lerp(0.0, -0.12, t) + lift, 0);
+      front.current.position.set(lerp(0.09, 0.715, t) * fan, lerp(0.065, 0.05, t) + lift, 0);
       front.current.rotation.set(
         lerp(0.04, 0.08, t),
         lerp(-0.015, -0.04, t),
@@ -110,7 +112,7 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
       );
     }
     if (back.current) {
-      back.current.position.set(lerp(-0.09, -0.715, t) * fan, lerp(0.13, 0.22, t) + lift, 0);
+      back.current.position.set(lerp(-0.09, -0.715, t) * fan, lerp(0.065, 0.05, t) + lift, 0);
       back.current.rotation.set(
         lerp(0.04, 0.08, t),
         lerp(0.015, 0.04, t),
@@ -121,14 +123,15 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
 
   return (
     <>
-      {/* Back paper (CrowdFlow) — lower z so the front paper overlaps it. */}
+      {/* Back paper (CrowdFlow) — lower z so the front paper overlaps it.
+          pointerEvents auto: the whole paper is a link to the story. */}
       <group ref={back}>
         <Html
           transform
           scale={scale}
           zIndexRange={[16, 6]}
           occlude={false}
-          style={{ pointerEvents: "none" }}
+          style={{ pointerEvents: "auto" }}
         >
           <Newspaper story={CROWDFLOW_STORY} />
         </Html>
@@ -141,7 +144,7 @@ function Papers({ progressRef }: { progressRef: React.MutableRefObject<number> }
           scale={scale}
           zIndexRange={[40, 26]}
           occlude={false}
-          style={{ pointerEvents: "none" }}
+          style={{ pointerEvents: "auto" }}
         >
           <Newspaper story={AURA_STORY} />
         </Html>
@@ -173,9 +176,10 @@ export function ProphetScene({
       dpr={[1, 2]}
       camera={{ position: [0, 0, 6], fov: 34 }}
       gl={{ antialias: true, alpha: true }}
-      // !overflow-visible defeats R3F's inline `overflow: hidden` so the papers
-      // can fan out past the canvas/container edges without being clipped.
-      className="!absolute inset-0 !overflow-visible"
+      // Keep R3F's default `overflow: hidden` (no !overflow-visible): the papers are
+      // clipped to the canvas — i.e. the header/container column — so they never
+      // spill into the page margins or off the right edge. Same in every browser.
+      className="!absolute inset-0"
     >
       <ReadySignal onReady={onReady} />
       <Papers progressRef={progressRef} />

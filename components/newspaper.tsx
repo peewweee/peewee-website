@@ -67,10 +67,14 @@ export function Newspaper({
 }) {
   // Show the photo once it loads; if the file is missing, keep the engraving box.
   const [imgOk, setImgOk] = React.useState(true);
+  // The WHOLE paper is one link to the story (not just "Read more"); the inner
+  // "Read more →" is a visual cue only (a nested <a> would be invalid HTML).
   return (
-    <div
+    <Link
+      href={story.href}
+      aria-label={`${story.headline} — read more`}
       className={cn(
-        "prophet-paper relative w-[420px] max-w-full select-none overflow-hidden rounded-[3px] border border-ink/50 bg-parchment px-4 pb-3.5 pt-2.5 text-ink",
+        "prophet-paper group relative block w-[420px] max-w-full cursor-pointer select-none overflow-hidden rounded-[3px] border border-ink/50 bg-parchment px-4 pb-3.5 pt-2.5 text-ink",
         "shadow-[0_22px_50px_-14px_rgba(0,0,0,0.75)]",
         "bg-gradient-to-b from-parchment to-parchment-2",
         className,
@@ -129,12 +133,12 @@ export function Newspaper({
               </div>
             )}
           </div>
-          <Link
-            href={story.href}
-            className="pointer-events-auto mt-2 inline-block font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-ink underline-offset-2 hover:underline"
+          <span
+            aria-hidden
+            className="mt-2 inline-block font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-ink underline-offset-2 group-hover:underline"
           >
             Read more →
-          </Link>
+          </span>
         </figure>
 
         <div className="text-[9px] leading-[1.36] text-ink">
@@ -146,6 +150,6 @@ export function Newspaper({
           </figcaption>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
