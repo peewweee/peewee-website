@@ -290,6 +290,32 @@ function rockTexture(): THREE.Texture | undefined {
   return _rock;
 }
 
+let _cloud: THREE.Texture | null = null;
+/** Soft blurry cloud puff — overlapping feathered radial blobs on transparency. */
+function cloudTexture(): THREE.Texture | undefined {
+  if (typeof document === "undefined") return undefined;
+  if (_cloud) return _cloud;
+  const s = 256;
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = s;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return undefined;
+  for (let i = 0; i < 30; i++) {
+    const x = s * (0.18 + Math.random() * 0.64);
+    const y = s * (0.3 + Math.random() * 0.4);
+    const r = s * (0.07 + Math.random() * 0.15);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, "rgba(255,255,255,0.14)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  _cloud = new THREE.CanvasTexture(cv);
+  return _cloud;
+}
+
 /* ============================================================================
    Reusable detail pieces
    ============================================================================ */
@@ -771,6 +797,164 @@ function Water() {
 }
 
 /* ============================================================================
+   Night atmosphere — distant mountains, drifting fog-clouds, and fireflies.
+   All tagged { noShadow: true } so the shadow pass ignores them.
+   ============================================================================ */
+
+/** Distant mountain range behind the castle. Basic (unlit) materials = pure
+ *  silhouettes; the scene's exponential fog fades them into the darkness, the
+ *  far ridge more than the near one. */
+const MOUNTAINS: { x: number; z: number; h: number; r: number; far: boolean }[] = [
+  // far ridge
+  { x: -38, z: -36, h: 12, r: 14, far: true },
+  { x: -24, z: -37, h: 15, r: 16, far: true },
+  { x: -8, z: -38, h: 11, r: 13, far: true },
+  { x: 6, z: -36, h: 16, r: 17, far: true },
+  { x: 22, z: -37, h: 12, r: 14, far: true },
+  { x: 38, z: -36, h: 14, r: 15, far: true },
+  // nearer, slightly lighter ridge
+  { x: -44, z: -26, h: 10, r: 11, far: false },
+  { x: -30, z: -26, h: 9, r: 10, far: false },
+  { x: -14, z: -27, h: 12, r: 12, far: false },
+  { x: 2, z: -26, h: 8, r: 9, far: false },
+  { x: 14, z: -27, h: 11, r: 11, far: false },
+  { x: 30, z: -25, h: 9, r: 10, far: false },
+  { x: 44, z: -27, h: 12, r: 12, far: false },
+];
+
+function Mountains() {
+  return (
+    <group>
+      {MOUNTAINS.map((m, i) => (
+        <mesh
+          key={i}
+          position={[m.x, WATER_Y - 0.5 + m.h / 2, m.z]}
+          rotation={[0, (i * 0.7) % Math.PI, 0]}
+          userData={{ noShadow: true }}
+        >
+          <coneGeometry args={[m.r, m.h, 6]} />
+          <meshBasicMaterial color={m.far ? "#151a2c" : "#1e2440"} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Very faint cloud/fog sheets covering the sky behind the castle, drifting
+ *  slowly. Sinusoidal drift (not wrap-around) so there's never a pop. */
+const CLOUD_SHEETS: {
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+  h: number;
+  opacity: number;
+  drift: number;
+}[] = [
+  { x: -18, y: 6, z: -22, w: 46, h: 13, opacity: 0.11, drift: 0.05 },
+  { x: 10, y: 9, z: -28, w: 60, h: 17, opacity: 0.08, drift: 0.035 },
+  { x: 26, y: 4.5, z: -20, w: 38, h: 11, opacity: 0.13, drift: 0.06 },
+  { x: -2, y: 12, z: -32, w: 72, h: 20, opacity: 0.06, drift: 0.025 },
+  { x: -34, y: 8, z: -30, w: 50, h: 15, opacity: 0.07, drift: 0.045 },
+];
+
+function NightClouds() {
+  const group = React.useRef<THREE.Group>(null);
+  useFrame((state) => {
+    const g = group.current;
+    if (!g) return;
+    const t = state.clock.elapsedTime;
+    g.children.forEach((c, i) => {
+      const def = CLOUD_SHEETS[i];
+      if (!def) return;
+      c.position.x = def.x + Math.sin(t * def.drift + i * 2.1) * 9;
+    });
+  });
+  return (
+    <group ref={group}>
+      {CLOUD_SHEETS.map((c, i) => (
+        <mesh key={i} position={[c.x, c.y, c.z]} userData={{ noShadow: true }}>
+          <planeGeometry args={[c.w, c.h]} />
+          <meshBasicMaterial
+            map={cloudTexture()}
+            color="#8fa2d6"
+            transparent
+            opacity={c.opacity}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Tiny bright fireflies drifting around the whole scene. Additive warm points
+ *  that catch the bloom pass. This component also keeps the demand frameloop
+ *  ticking (each rendered frame requests the next) so the drift is continuous —
+ *  except for reduced-motion users, where the flies simply rest. */
+const FIREFLY_COUNT = 140;
+
+function Fireflies() {
+  const pts = React.useRef<THREE.Points>(null);
+  const inv = useThree((s) => s.invalidate);
+  const reduced = React.useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
+    [],
+  );
+  // Rest position + independent per-axis phase/speed → gentle wandering.
+  const { geom, base, phase, speed } = React.useMemo(() => {
+    const base = new Float32Array(FIREFLY_COUNT * 3);
+    const phase = new Float32Array(FIREFLY_COUNT * 3);
+    const speed = new Float32Array(FIREFLY_COUNT * 3);
+    for (let i = 0; i < FIREFLY_COUNT * 3; i += 3) {
+      base[i] = (Math.random() * 2 - 1) * 16; // x — across the whole scene
+      base[i + 1] = WATER_Y + 0.4 + Math.random() * 10.5; // y — water to above the towers
+      base[i + 2] = -8 + Math.random() * 17; // z — behind the castle to near the camera
+      for (let a = 0; a < 3; a++) {
+        phase[i + a] = Math.random() * Math.PI * 2;
+        speed[i + a] = 0.15 + Math.random() * 0.45;
+      }
+    }
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute("position", new THREE.BufferAttribute(base.slice(), 3));
+    return { geom, base, phase, speed };
+  }, []);
+  React.useEffect(() => () => geom.dispose(), [geom]);
+
+  useFrame((state) => {
+    const p = pts.current;
+    if (!p) return;
+    const t = state.clock.elapsedTime;
+    const attr = p.geometry.getAttribute("position") as THREE.BufferAttribute;
+    const arr = attr.array as Float32Array;
+    for (let i = 0; i < FIREFLY_COUNT * 3; i += 3) {
+      arr[i] = base[i] + Math.sin(t * speed[i] + phase[i]) * 1.7;
+      arr[i + 1] = base[i + 1] + Math.sin(t * speed[i + 1] + phase[i + 1]) * 0.9;
+      arr[i + 2] = base[i + 2] + Math.cos(t * speed[i + 2] + phase[i + 2]) * 1.3;
+    }
+    attr.needsUpdate = true;
+    if (!reduced) inv();
+  });
+
+  return (
+    <points ref={pts} geometry={geom} frustumCulled={false} userData={{ noShadow: true }}>
+      <pointsMaterial
+        size={0.04}
+        sizeAttenuation
+        color="#ffe9a0"
+        transparent
+        opacity={0.9}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
+      />
+    </points>
+  );
+}
+
+/* ============================================================================
    Scene root
    ============================================================================ */
 
@@ -882,10 +1066,11 @@ function SceneContents({
   );
 
   // Realism: let every mesh cast + receive shadows (one pass, after mount).
+  // Atmosphere pieces (mountains/clouds/fireflies) opt out via userData.noShadow.
   React.useEffect(() => {
     scene.traverse((o) => {
       const m = o as THREE.Mesh;
-      if (m.isMesh) {
+      if (m.isMesh && !m.userData.noShadow) {
         m.castShadow = true;
         m.receiveShadow = true;
       }
@@ -1039,6 +1224,10 @@ function SceneContents({
         fade
         speed={0.5}
       />
+      {/* Night atmosphere — behind/around the castle */}
+      <Mountains />
+      <NightClouds />
+      <Fireflies />
       <Water />
       <LeftCliff />
       <RightCliff />
