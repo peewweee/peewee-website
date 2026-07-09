@@ -38,12 +38,12 @@ const pipeline = [
   {
     step: "Answer",
     detail:
-      "An LLM returns a reply grounded only in the retrieved text, with citations.",
+      "An LLM is instructed to reply using only the retrieved text — never inventing facts.",
   },
   {
     step: "Protect",
     detail:
-      "A caching layer + per-visitor rate-limiting keep it fast and free to run.",
+      "A response cache and per-visitor rate limit guard every request, keeping the Hat fast and free to run.",
   },
 ];
 
