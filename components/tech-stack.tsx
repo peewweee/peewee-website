@@ -42,7 +42,7 @@ import {
 } from "react-icons/si";
 
 import { cn } from "@/lib/utils";
-import { BorderBeam } from "@/components/ui/border-beam";
+import { MagicCard } from "@/components/ui/magic-card";
 
 // Both lucide and react-icons render an SVG that inherits `currentColor` and
 // accepts className/style — a loose shared type so brand + concept icons mix.
@@ -186,15 +186,7 @@ export function TechStack() {
           share an equal height. */}
       <div className="mt-6 grid grid-cols-1 items-stretch gap-x-8 gap-y-6 sm:grid-cols-2">
         {CATEGORIES.map((cat) => (
-          <div
-            key={cat.title}
-            className="group relative rounded-card border border-border bg-bg-sunken p-5"
-          >
-            {/* magicui-style beam, only while hovered */}
-            <BorderBeam
-              size={300}
-              className="opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-            />
+          <MagicCard key={cat.title} className="h-full p-5">
             {/* font-sans + font-normal override the global h1–h3 Cinzel/bold base rule */}
             <h3 className="font-sans text-base font-normal text-foreground">
               {cat.title}
@@ -214,7 +206,7 @@ export function TechStack() {
                 </li>
               ))}
             </ul>
-          </div>
+          </MagicCard>
         ))}
       </div>
     </section>
