@@ -24,8 +24,49 @@ const HAT = {
     "My memory of Phoebe hasn't been woven into the enchantment yet. Once her tale is bound into my brim, I'll answer in full. For now, wander her Projects, About, and Resume.",
   rateLimited:
     "Hmm... a mind far too frantic! You've overwhelmed my ancient magic. Wait one minute for my enchantments to cool down.",
-  pondering: "The Hat is pondering... try again in a moment.",
+  pondering: "Hmm... my thoughts have wandered a moment too far. Ask me again shortly, and I shall answer.",
 };
+
+/**
+ * Scripted, deterministic answers for the two most common visitor questions —
+ * "what are her projects?" and "what's her work experience?". These bypass the
+ * model entirely, so those questions always return the same clean, structured
+ * summary and never spend Gemini quota. Keep in sync with content/data.md.
+ */
+const SCRIPTED = {
+  projects:
+    "Ah, let me show you what Phoebe has conjured! Seven creations in all:\n\n" +
+    "• Aura — an AI-powered finance app that turns plain-language expenses into tracked spending and guidance (Java, Spring Boot, Gemini).\n" +
+    "• CrowdFlow — a crowd-aware itinerary planner that reroutes you to emptier spots (Next.js, Gemini, OpenWeather).\n" +
+    "• Solar Connect — a real-time dashboard for a solar-powered charging station thesis (Next.js, Supabase).\n" +
+    "• Balai ni Juan — an event-venue booking site built for a client (JavaScript, HTML, CSS).\n" +
+    "• Arduino Day PH 2025 — the official event website's UI/UX design (Figma).\n" +
+    "• Sparkfest — UI/UX design for the GDG PUP hackathon site (Figma).\n" +
+    "• FairySplit — a fairer shared-expense app, still in the works (React, NestJS).\n\n" +
+    "Wander into the Library to see them all in full.",
+  experience:
+    "Let me trace Phoebe's path so far... Three chapters:\n\n" +
+    "• Junior AI Engineer at SOFI AI Tech Solution (Jan–Mar 2026) — kept 10+ live client chatbots stable, built a document-ingestion system with FAISS, and refined RAG pipelines for accurate answers.\n" +
+    "• Developer Intern at SOFI AI Tech Solution (Jul–Dec 2025) — launched a client-facing AI agent into production, wired up Google Sheets automations, and extended chatbots through REST APIs.\n" +
+    "• Software Engineer Intern at Dewise Solutions (Aug–Oct 2024) — built a Next.js progressive web app, completed 10+ Microsoft Learn paths, and shaped UI/UX through wireframing and prototyping.\n\n" +
+    "Her Resume holds the finer details.",
+} as const;
+
+/**
+ * Detects the two scripted intents from a visitor's question via keywords.
+ * Experience is checked first (its words are the more specific); a project or
+ * portfolio word otherwise routes to projects. null → fall through to the model.
+ */
+function scriptedIntent(question: string): keyof typeof SCRIPTED | null {
+  const s = question.toLowerCase();
+  const experience =
+    /\b(experience|employ(?:ed|er|ment)?|intern(?:ship)?s?|jobs?|career|work history|work experience|worked (?:at|as|for|with)|compan(?:y|ies)|professional background)\b/;
+  const projects =
+    /\b(projects?|portfolio|case stud(?:y|ies)|built|build|made|shipped|created)\b/;
+  if (experience.test(s)) return "experience";
+  if (projects.test(s)) return "projects";
+  return null;
+}
 
 /** Stable per-visitor id: client IP + a random id kept in an httpOnly cookie. */
 function identify(req: Request): { id: string; cookieId: string; isNew: boolean } {
@@ -118,6 +159,12 @@ export async function POST(req: Request) {
   // 1) Rate limit (stops bots burning the free quota; no-op without Redis).
   const rl = await checkRateLimit(id);
   if (!rl.ok) return textReply(HAT.rateLimited, [], { status: 429, cookie });
+
+  // 1.5) Scripted intents — questions about projects or work experience always
+  //       get the same structured summary, straight from here (never the model,
+  //       never quota, works even if Gemini/the index is down).
+  const intent = scriptedIntent(question);
+  if (intent) return textReply(SCRIPTED[intent], [], { cookie });
 
   // 2) Cache — repeat/common questions never hit Gemini.
   const cached = await getCachedAnswer(question);

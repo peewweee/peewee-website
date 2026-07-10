@@ -41,7 +41,7 @@ export const navItems: NavItem[] = [
   {
     label: "Sorting Hat",
     href: "/sorting-hat",
-    tower: "Ask the Sorting Hat",
+    tower: "Ask about my work",
     description: "Ask the enchanted Hat about my work.",
     glyph: "🎩",
   },

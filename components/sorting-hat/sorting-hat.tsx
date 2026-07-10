@@ -165,7 +165,7 @@ function ChatBubble({ message }: { message: Message }) {
       <div className={cn("min-w-0 max-w-[80%]", !isHat && "flex flex-col items-end")}>
         <div
           className={cn(
-            "px-4 py-2.5 text-sm leading-relaxed",
+            "whitespace-pre-line px-4 py-2.5 text-sm leading-relaxed",
             isHat
               ? "rounded-[14px_14px_14px_4px] border border-border bg-surface text-foreground"
               : "rounded-[14px_14px_4px_14px] bg-accent font-medium text-accent-ink",
