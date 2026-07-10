@@ -23,9 +23,17 @@ export function BackToCastle() {
 
   if (pathname === "/") return null;
 
-  // Only pages that ARE a castle tower get the zoom-in + iris transition. Pages
-  // with no tower (e.g. /resume) just open the castle in its default view.
+  // The exit (iris close + zoom-out) only plays if THIS page was entered through a
+  // tower/window — PortalTransition tags that as wiz:entry="transition" on arrival.
+  // Navbar / plain-link arrivals are "plain", so "Back to castle" navigates plainly.
   const hasTower = navItems.some((item) => item.href === pathname);
+  const enteredViaWindow = () => {
+    try {
+      return sessionStorage.getItem("wiz:entry") === "transition";
+    } catch {
+      return false;
+    }
+  };
 
   const go = () => {
     if (leavingRef.current) return;
@@ -44,8 +52,17 @@ export function BackToCastle() {
     <Link
       href="/"
       onClick={(e) => {
-        // No tower for this page → let the link navigate normally (no animation).
-        if (!hasTower) return;
+        // Only pages entered through their tower/window get the exit transition;
+        // everything else navigates normally (no animation).
+        if (!hasTower || !enteredViaWindow()) {
+          // Plain exit — drop any stale zoom-out target so the castle just opens.
+          try {
+            sessionStorage.removeItem("wiz:from");
+          } catch {
+            /* ignore */
+          }
+          return;
+        }
         e.preventDefault();
         go();
       }}

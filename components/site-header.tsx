@@ -8,7 +8,6 @@ import { Menu } from "lucide-react";
 import { navItems, siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { BackToCastle } from "@/components/back-to-castle";
-import { useEnterReveal, requestFlyToTower } from "@/components/page-reveal";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,20 +33,8 @@ export function SiteHeader() {
     setMobileOpen(false);
   }, [pathname]);
 
-  // Nav clicks play the same iris page-reveal as clicking a tower — the
-  // destination opens out of the growing reveal (the 3D fly-in is castle-only, so
-  // this matches the arrival). Modified clicks and same-page clicks fall through.
-  const enter = useEnterReveal();
-  const onNavClick = (e: React.MouseEvent, href: string) => {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-    if (pathname === href) return;
-    // Only the castle page gets the tower-dive + reveal. From content pages the
-    // nav navigates plainly — let the Link's default handle it (no transition).
-    if (pathname !== "/") return;
-    e.preventDefault();
-    setMobileOpen(false); // uncover the castle behind the mobile menu before the dive
-    if (!requestFlyToTower(href)) enter(href); // dive; reveal only if the scene isn't ready
-  };
+  // Nav links navigate plainly — no 3D dive, no iris. Only clicking a tower/window
+  // in the castle plays the enter transition (see castle-scene + page-reveal).
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-[rgba(11,16,38,0.72)] backdrop-blur-md">
@@ -71,7 +58,6 @@ export function SiteHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={(e) => onNavClick(e, item.href)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "relative rounded-pill px-3.5 py-2 text-sm font-medium transition-colors",
@@ -118,7 +104,6 @@ export function SiteHeader() {
                     <DialogClose asChild key={item.href}>
                       <Link
                         href={item.href}
-                        onClick={(e) => onNavClick(e, item.href)}
                         aria-current={active ? "page" : undefined}
                         className={cn(
                           "rounded-field px-3 py-3 text-base font-medium transition-colors",

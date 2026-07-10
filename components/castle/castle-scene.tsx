@@ -14,7 +14,7 @@ import { EffectComposer, Bloom } from "@react-three/postprocessing";
 
 import type { NavItem } from "@/lib/types";
 import { readCastleTheme, type CastleTheme } from "@/lib/tokens";
-import { useEnterReveal, registerFlyToTower } from "@/components/page-reveal";
+import { useEnterReveal } from "@/components/page-reveal";
 import { HatSilhouette } from "@/components/sorting-hat/hat-icon";
 
 type Vec3 = [number, number, number];
@@ -1111,25 +1111,6 @@ function SceneContents({
     [drive, handleArrive],
   );
 
-  // Bridge for the header nav: clicking "Projects" (etc.) dives into that tower
-  // just like clicking the tower does. Register a route→fly action; the position
-  // per route matches where each structure is rendered. handleSelect no-ops if a
-  // fly is already running, so a stray double-click can't double-navigate.
-  React.useEffect(() => {
-    registerFlyToTower((href) => {
-      const item = items.find((it) => it.href === href);
-      if (!item) return false;
-      const tower = TOWERS.find((tw) => tw.href === href);
-      let p: Vec3 | null = tower ? tower.position : null;
-      if (!p && href === "/great-hall") p = [-7, LEFT_TOP, -2];
-      if (!p && href === "/contact") p = [5.0, RIGHT_TOP, -0.4];
-      if (!p) return false;
-      handleSelect(item, new THREE.Vector3(p[0], p[1], p[2]));
-      return true;
-    });
-    return () => registerFlyToTower(null);
-  }, [items, handleSelect]);
-
   // "Back to castle" intro: if we arrived from a content page (wiz:from), start
   // the camera zoomed in on that page's structure (inside its window) and settle
   // at that tower's head-on front pose — the same spot the scroll tour frames it.
@@ -1403,7 +1384,12 @@ function GreatHallBuilding({
   descendRef: React.MutableRefObject<number>;
   onSelect: (item: NavItem, pos: THREE.Vector3) => void;
 }) {
-  const [hovered, setHovered] = React.useState(false);
+  const [meshHover, setMeshHover] = React.useState(false);
+  const [htmlHover, setHtmlHover] = React.useState(false);
+  // Split hover sources: the 3D mesh (onPointerOver) and the DOM label/pin
+  // (onPointerEnter) each own a flag, OR'd — so the mesh's onPointerOut can't
+  // clobber a live label/pin hover, and vice-versa. Hover any part → lit.
+  const hovered = meshHover || htmlHover;
   useCursor(hovered);
   React.useEffect(() => {
     invalidate();
@@ -1448,9 +1434,9 @@ function GreatHallBuilding({
       position={position}
       onPointerOver={(e) => {
         e.stopPropagation();
-        setHovered(true);
+        setMeshHover(true);
       }}
-      onPointerOut={() => setHovered(false)}
+      onPointerOut={() => setMeshHover(false)}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(item, new THREE.Vector3(position[0], position[1], position[2]));
@@ -1495,8 +1481,10 @@ function GreatHallBuilding({
           onClick={() =>
             onSelect(item, new THREE.Vector3(position[0], position[1], position[2]))
           }
+          onPointerEnter={() => setHtmlHover(true)}
+          onPointerLeave={() => setHtmlHover(false)}
           aria-label="Enter the Great Hall"
-          className={`pointer-events-auto whitespace-nowrap text-xs font-semibold [text-shadow:0_1px_10px_rgba(0,0,0,0.95)] transition-colors focus-visible:outline-none ${
+          className={`pointer-events-auto whitespace-nowrap text-xs font-semibold [text-shadow:0_1px_10px_rgba(0,0,0,0.95)] transition-colors hover:text-foreground focus-visible:outline-none ${
             hovered ? "text-foreground" : "text-accent-text"
           }`}
         >
@@ -1686,7 +1674,12 @@ function Tower({
   /** Push the body cylinder up into the cone so no gap shows at the eaves. */
   extendIntoCone?: boolean;
 }) {
-  const [hovered, setHovered] = React.useState(false);
+  const [meshHover, setMeshHover] = React.useState(false);
+  const [htmlHover, setHtmlHover] = React.useState(false);
+  // Split hover sources: the 3D mesh (onPointerOver) and the DOM label/pin
+  // (onPointerEnter) each own a flag, OR'd — so the mesh's onPointerOut can't
+  // clobber a live label/pin hover, and vice-versa. Hover any part → lit.
+  const hovered = meshHover || htmlHover;
   useCursor(hovered);
 
   const roofRef = React.useRef<THREE.MeshStandardMaterial>(null);
@@ -1742,9 +1735,9 @@ function Tower({
       position={position}
       onPointerOver={(e) => {
         e.stopPropagation();
-        setHovered(true);
+        setMeshHover(true);
       }}
-      onPointerOut={() => setHovered(false)}
+      onPointerOut={() => setMeshHover(false)}
       onClick={select}
     >
       <mesh position={[0, bodyH / 2, 0]}>
@@ -1822,8 +1815,10 @@ function Tower({
         <button
           type="button"
           onClick={() => select()}
+          onPointerEnter={() => setHtmlHover(true)}
+          onPointerLeave={() => setHtmlHover(false)}
           aria-label={`Go to ${item.tower}`}
-          className={`pointer-events-auto whitespace-nowrap text-xs font-semibold [text-shadow:0_1px_10px_rgba(0,0,0,0.95)] transition-colors focus-visible:outline-none ${
+          className={`pointer-events-auto whitespace-nowrap text-xs font-semibold [text-shadow:0_1px_10px_rgba(0,0,0,0.95)] transition-colors hover:text-foreground focus-visible:outline-none ${
             hovered ? "text-foreground" : "text-accent-text"
           }`}
         >
@@ -1842,6 +1837,8 @@ function Tower({
           <button
             type="button"
             onClick={() => select()}
+            onPointerEnter={() => setHtmlHover(true)}
+            onPointerLeave={() => setHtmlHover(false)}
             aria-label={`Enter ${item.tower}`}
             className="pointer-events-auto relative grid size-6 place-items-center"
           >
@@ -1874,7 +1871,12 @@ function Owlery({
   descendRef: React.MutableRefObject<number>;
   onSelect: (item: NavItem, pos: THREE.Vector3) => void;
 }) {
-  const [hovered, setHovered] = React.useState(false);
+  const [meshHover, setMeshHover] = React.useState(false);
+  const [htmlHover, setHtmlHover] = React.useState(false);
+  // Split hover sources: the 3D mesh (onPointerOver) and the DOM label/pin
+  // (onPointerEnter) each own a flag, OR'd — so the mesh's onPointerOut can't
+  // clobber a live label/pin hover, and vice-versa. Hover any part → lit.
+  const hovered = meshHover || htmlHover;
   useCursor(hovered);
   const winRef = React.useRef<THREE.MeshStandardMaterial>(null);
 
@@ -1917,9 +1919,9 @@ function Owlery({
       position={position}
       onPointerOver={(e) => {
         e.stopPropagation();
-        setHovered(true);
+        setMeshHover(true);
       }}
-      onPointerOut={() => setHovered(false)}
+      onPointerOut={() => setMeshHover(false)}
       onClick={select}
     >
       {/* body */}
@@ -1998,8 +2000,10 @@ function Owlery({
         <button
           type="button"
           onClick={() => select()}
+          onPointerEnter={() => setHtmlHover(true)}
+          onPointerLeave={() => setHtmlHover(false)}
           aria-label={`Go to ${item.tower}`}
-          className={`pointer-events-auto whitespace-nowrap text-xs font-semibold [text-shadow:0_1px_10px_rgba(0,0,0,0.95)] transition-colors focus-visible:outline-none ${
+          className={`pointer-events-auto whitespace-nowrap text-xs font-semibold [text-shadow:0_1px_10px_rgba(0,0,0,0.95)] transition-colors hover:text-foreground focus-visible:outline-none ${
             hovered ? "text-foreground" : "text-accent-text"
           }`}
         >

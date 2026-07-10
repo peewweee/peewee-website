@@ -310,6 +310,10 @@ export function PortalTransition() {
     try {
       flag = sessionStorage.getItem("wiz:reveal");
       if (flag) sessionStorage.removeItem("wiz:reveal");
+      // Tag HOW this page was reached so "Back to castle" only plays the exit for
+      // window/tower entries (they set wiz:reveal="in"). Navbar / plain-link
+      // arrivals leave no flag → "plain" → no exit animation.
+      sessionStorage.setItem("wiz:entry", flag === "in" ? "transition" : "plain");
     } catch {
       /* ignore */
     }
