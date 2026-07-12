@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { hasGeminiKey } from "@/lib/rag/config";
 import { retrieve } from "@/lib/rag/retrieve";
-import { generateAnswer, citationsFromChunks } from "@/lib/rag/ask";
+import { generateAnswer, citationsFromChunks, classifyIntent } from "@/lib/rag/ask";
 import {
   checkRateLimit,
   reserveDailyCall,
@@ -28,10 +28,10 @@ const HAT = {
 };
 
 /**
- * Scripted, deterministic answers for the two most common visitor questions —
- * "what are her projects?" and "what's her work experience?". These bypass the
- * model entirely, so those questions always return the same clean, structured
- * summary and never spend Gemini quota. Keep in sync with content/data.md.
+ * Fixed, structured replies for the two "list everything" questions. They are
+ * served verbatim (identical every time) — but ONLY after the model has decided
+ * the visitor actually wants them (see classifyIntent). Keep in sync with
+ * content/data.md. Rendered with line breaks by the chat bubble (whitespace-pre-line).
  */
 const SCRIPTED = {
   projects:
@@ -51,22 +51,6 @@ const SCRIPTED = {
     "• Software Engineer Intern at Dewise Solutions (Aug–Oct 2024) — built a Next.js progressive web app, completed 10+ Microsoft Learn paths, and shaped UI/UX through wireframing and prototyping.\n\n" +
     "Her Resume holds the finer details.",
 } as const;
-
-/**
- * Detects the two scripted intents from a visitor's question via keywords.
- * Experience is checked first (its words are the more specific); a project or
- * portfolio word otherwise routes to projects. null → fall through to the model.
- */
-function scriptedIntent(question: string): keyof typeof SCRIPTED | null {
-  const s = question.toLowerCase();
-  const experience =
-    /\b(experience|employ(?:ed|er|ment)?|intern(?:ship)?s?|jobs?|career|work history|work experience|worked (?:at|as|for|with)|compan(?:y|ies)|professional background)\b/;
-  const projects =
-    /\b(projects?|portfolio|case stud(?:y|ies)|built|build|made|shipped|created)\b/;
-  if (experience.test(s)) return "experience";
-  if (projects.test(s)) return "projects";
-  return null;
-}
 
 /** Stable per-visitor id: client IP + a random id kept in an httpOnly cookie. */
 function identify(req: Request): { id: string; cookieId: string; isNew: boolean } {
@@ -160,12 +144,6 @@ export async function POST(req: Request) {
   const rl = await checkRateLimit(id);
   if (!rl.ok) return textReply(HAT.rateLimited, [], { status: 429, cookie });
 
-  // 1.5) Scripted intents — questions about projects or work experience always
-  //       get the same structured summary, straight from here (never the model,
-  //       never quota, works even if Gemini/the index is down).
-  const intent = scriptedIntent(question);
-  if (intent) return textReply(SCRIPTED[intent], [], { cookie });
-
   // 2) Cache — repeat/common questions never hit Gemini.
   const cached = await getCachedAnswer(question);
   if (cached) return textReply(cached.answer, cached.citations, { cookie });
@@ -179,16 +157,30 @@ export async function POST(req: Request) {
   const budget = await reserveDailyCall();
   if (!budget.ok) return textReply(HAT.rateLimited, [], { status: 429, cookie });
 
-  // 5) Retrieve. Empty index (not ingested) → in-character "not ready".
+  // 5) Understand the query with the model (NOT keywords): does the visitor want
+  //    a full list of her projects or her work experience? If so, serve the fixed
+  //    structured script verbatim. Everything else — one specific project, skills,
+  //    small talk, or even "don't mention her projects" — returns "none" and falls
+  //    through to a grounded RAG answer below.
+  const intent = await classifyIntent(question);
+  if (intent !== "none") {
+    const scripted = SCRIPTED[intent];
+    await setCachedAnswer(question, { answer: scripted, citations: [] });
+    return textReply(scripted, [], { cookie });
+  }
+
+  // 6) Retrieve. Empty index (not ingested) → in-character "not ready".
+  //    topK=8 (not 4): the corpus is small and each project is its own chunk, so
+  //    a broad "list all her projects" needs enough slots to surface them all.
   let chunks: RetrievedChunk[];
   try {
-    chunks = await retrieve(question, 4);
+    chunks = await retrieve(question, 8);
   } catch {
     chunks = [];
   }
   if (chunks.length === 0) return textReply(HAT.notReady, [], { cookie });
 
-  // 6) Generate a grounded answer (non-streaming — reliable on serverless).
+  // 7) Generate a grounded answer (non-streaming — reliable on serverless).
   //    One short backoff-retry inside generateAnswer, then an in-character fallback.
   //    Errors are logged so Vercel's runtime logs surface any Gemini issue.
   const citations = citationsFromChunks(chunks);
