@@ -374,6 +374,42 @@ html.wand-active * {
 }
 
 /* =========================================================================
+   Castle "brewing" loader — the 2D cauldron shown while the heavy 3D castle
+   chunk loads (see castle-brewing.tsx). Bubbles rise + pop and the potion
+   glows. All neutralized by the reduced-motion block below.
+   ========================================================================= */
+@keyframes castle-brew-bubble {
+  0% {
+    transform: translateY(4px) scale(0.35);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-24px) scale(1);
+    opacity: 0;
+  }
+}
+@keyframes castle-brew-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translateX(-50%) scale(1.16);
+  }
+}
+.castle-brew-bubble {
+  animation: castle-brew-bubble 1.9s ease-in-out infinite;
+}
+.castle-brew-glow {
+  animation: castle-brew-glow 2.4s ease-in-out infinite;
+}
+
+/* =========================================================================
    Reduced motion — neutralize every animation/transition (WCAG 2.1 AA)
    ========================================================================= */
 

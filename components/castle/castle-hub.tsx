@@ -9,6 +9,7 @@ import type { NavItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useCastle3D } from "@/lib/use-preference";
 import { CastleSilhouette, CastleTowerNav } from "./castle-fallback";
+import { CastleBrewing } from "./castle-brewing";
 
 // Heavy three.js bundle — code-split and loaded client-side only, on demand.
 // (Keep ALL @react-three/* imports inside this lazy module, never in the hub.)
@@ -58,6 +59,44 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
   const descendRef = React.useRef(0);
   const invalidateRef = React.useRef<() => void>(() => {});
   const titleRef = React.useRef<HTMLDivElement>(null);
+
+  // ── 2D "brewing" loader ───────────────────────────────────────────────────
+  // Covers the blank gap before the 3D castle paints — but ONLY for plain /
+  // first-visit entries. Back-to-castle arrivals already have the iris covering
+  // the load, so we skip it there. wiz:reveal is read in the INITIAL state (during
+  // render, before PortalTransition consumes it in a layout effect) so it's
+  // race-free; we only read it here, never clear it.
+  const [cameViaWindow] = React.useState(() => {
+    try {
+      return sessionStorage.getItem("wiz:reveal") === "in";
+    } catch {
+      return false;
+    }
+  });
+  const [brewing, setBrewing] = React.useState(!cameViaWindow);
+  const brewTimer = React.useRef<number | undefined>(undefined);
+  // Hard fallback so the loader can never stick (e.g. WebGL fails and the scene
+  // never reports ready).
+  React.useEffect(() => {
+    if (!brewing) return;
+    const t = window.setTimeout(() => setBrewing(false), 6000);
+    return () => window.clearTimeout(t);
+  }, [brewing]);
+  React.useEffect(
+    () => () => {
+      if (brewTimer.current !== undefined) window.clearTimeout(brewTimer.current);
+    },
+    [],
+  );
+  // Scene is set up → keep the invalidate handle AND fade the loader out after a
+  // beat so the demand loop has actually painted the castle first.
+  const handleReady = React.useCallback((fn: () => void) => {
+    invalidateRef.current = fn;
+    fn();
+    if (brewTimer.current === undefined) {
+      brewTimer.current = window.setTimeout(() => setBrewing(false), 650);
+    }
+  }, []);
 
   // Scroll drives the camera TOUR and LOOPS: wheel/touch accumulate descendRef
   // (the value shared with the scene), wrapping 0→1→0, so reaching the original
@@ -139,14 +178,7 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
       <div className="absolute inset-0">
         {/* Only ever the 3D castle — no 2D silhouette to flash on (re)mount. */}
         <SceneBoundary fallback={null}>
-          <CastleScene
-            items={items}
-            descendRef={descendRef}
-            onReady={(fn) => {
-              invalidateRef.current = fn;
-              fn();
-            }}
-          />
+          <CastleScene items={items} descendRef={descendRef} onReady={handleReady} />
         </SceneBoundary>
       </div>
 
@@ -172,6 +204,10 @@ function CastleHero({ items, className }: { items: NavItem[]; className?: string
         </span>
         <ChevronDown className="size-5 animate-bounce text-accent-text" aria-hidden />
       </div>
+
+      {/* 2D brewing loader — plain / first-visit entries only (skipped for the
+          back-to-castle iris, which already covers the load). */}
+      {!cameViaWindow && <CastleBrewing done={!brewing} />}
     </section>
   );
 }
