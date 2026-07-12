@@ -97,21 +97,24 @@ export function SortingHat() {
 
   return (
     <div
-      className="flex h-[min(60vh,560px)] w-full flex-col overflow-hidden rounded-[18px] border border-accent shadow-[0_0_40px_rgba(var(--accent-glow),0.14)]"
-      style={{ background: "linear-gradient(180deg, var(--surface), var(--bg))" }}
+      className="flex h-[min(60vh,560px)] w-full flex-col overflow-hidden rounded-[18px] border border-accent bg-bg-sunken shadow-[0_0_40px_rgba(var(--accent-glow),0.14)]"
     >
       {/* Header */}
       <div className="flex items-center gap-3.5 border-b border-border bg-bg-sunken/50 px-5 py-4 sm:px-6">
-        <HatAvatar size={46} />
+        <div className="relative flex-none">
+          <HatAvatar size={46} />
+          {/* Online presence dot — bottom-right of the hat avatar. */}
+          <span
+            role="img"
+            aria-label="Online"
+            className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-bg-sunken bg-success"
+          />
+        </div>
         <div className="mr-auto min-w-0">
           <p className="font-display text-[17px] font-semibold text-foreground">
             The Sorting Hat
           </p>
         </div>
-        <span className="inline-flex flex-none items-center gap-1.5 rounded-pill border border-success/35 bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">
-          <span className="size-1.5 rounded-full bg-success" />
-          online
-        </span>
       </div>
 
       {/* Messages */}
@@ -130,7 +133,7 @@ export function SortingHat() {
       {/* Input */}
       <form
         onSubmit={onSubmit}
-        className="flex items-center gap-2.5 border-t border-border bg-bg-sunken/50 px-5 py-4 sm:px-6"
+        className="flex items-center gap-2.5 bg-bg-sunken/50 px-5 py-4 sm:px-6"
       >
         <label htmlFor="hat-input" className="sr-only">
           Ask the Sorting Hat a question
