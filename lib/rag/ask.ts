@@ -44,10 +44,13 @@ export function citationsFromChunks(chunks: RetrievedChunk[]): Citation[] {
 }
 
 /**
- * Generate a grounded answer (non-streaming). Returns the full text. We use a
- * single request/response call rather than token streaming — it's markedly more
- * reliable on serverless (Vercel), where a hand-rolled stream can end up empty.
- * Low maxOutputTokens keeps answers short and well under the free-tier budget.
+ * Generate a grounded answer (non-streaming). Returns the full text. A single
+ * request/response call rather than token streaming — markedly more reliable on
+ * serverless (Vercel), where a hand-rolled stream can end up empty. Low
+ * maxOutputTokens keeps answers short and well under the free-tier budget.
+ *
+ * Single-shot: it answers ONE question from the retrieved context, with no
+ * conversation memory — each message stands on its own.
  */
 export async function generateAnswer(opts: {
   question: string;
@@ -63,7 +66,7 @@ export async function generateAnswer(opts: {
     // Room for a full list (all 7 projects) without truncation; normal replies
     // stay short because the system prompt tells the Hat to.
     maxOutputTokens: 400,
-    // One retry only — hammering on a quota (429) just burns more of it.
+    // One retry only — smooths a transient blip without hammering a real quota.
     maxRetries: 1,
     // Gemini 2.5 models "think" by default; that would consume the small output
     // budget and return an empty answer. Disable it for fast, short replies.
@@ -74,42 +77,4 @@ export async function generateAnswer(opts: {
   // route logs/reports them rather than silently returning nothing.
   if (!trimmed) throw new Error(`empty generation (finishReason=${finishReason ?? "unknown"})`);
   return trimmed;
-}
-
-/** Intent labels the route understands. "none" → answer normally via RAG. */
-export type ScriptedIntent = "projects" | "experience" | "none";
-
-const CLASSIFY_SYSTEM = `Classify a visitor's message on Phoebe's portfolio into exactly one label:
-
-projects — they want a list or overview of ALL her projects, portfolio, or the things she has built.
-experience — they want a list or overview of ALL her work experience, jobs, roles, or career history.
-none — anything else: one specific project or job, her skills, education, background, a greeting, OR any request that tells you NOT to talk about her projects or experience.
-
-Judge by MEANING, not keywords — a message can contain the word "projects" and still be "none" (for example, "don't mention her projects"). Reply with ONLY one word: projects, experience, or none.`;
-
-/**
- * Decide whether the visitor wants the full projects list or the full experience
- * list — using the model, so it understands intent and negation ("don't mention
- * her projects" → none) instead of matching keywords. Cheap: one tiny-output
- * call, thinking disabled, no retry. On any failure it returns "none", so the
- * request just falls through to a normal grounded answer.
- */
-export async function classifyIntent(question: string): Promise<ScriptedIntent> {
-  try {
-    const { text } = await generateText({
-      model: google(CHAT_MODEL),
-      system: CLASSIFY_SYSTEM,
-      prompt: question,
-      temperature: 0,
-      maxOutputTokens: 10,
-      maxRetries: 0,
-      providerOptions: { google: { thinkingConfig: { thinkingBudget: 0 } } },
-    });
-    const t = text.trim().toLowerCase();
-    if (t.startsWith("projects")) return "projects";
-    if (t.startsWith("experience")) return "experience";
-    return "none";
-  } catch {
-    return "none";
-  }
 }

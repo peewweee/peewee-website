@@ -14,6 +14,7 @@ import type { Citation } from "./types";
  * still works.
  */
 let limiter: Ratelimit | null | undefined;
+let dailyLimiter: Ratelimit | null | undefined;
 
 function getLimiter(): Ratelimit | null {
   if (limiter !== undefined) return limiter;
@@ -32,16 +33,50 @@ function getLimiter(): Ratelimit | null {
   return limiter;
 }
 
-/** Returns { ok:false } only when a configured limiter says the visitor is over. */
-export async function checkRateLimit(identifier: string): Promise<{ ok: boolean }> {
-  const l = getLimiter();
-  if (!l) return { ok: true }; // no Redis configured → never block
-  try {
-    const { success } = await l.limit(identifier);
-    return { ok: success };
-  } catch {
-    return { ok: true }; // Redis hiccup shouldn't take the Hat down
+function getDailyLimiter(): Ratelimit | null {
+  if (dailyLimiter !== undefined) return dailyLimiter;
+  const r = getRedis();
+  dailyLimiter = r
+    ? new Ratelimit({
+        redis: r,
+        // 20 messages per visitor per DAY — a real visitor won't notice, but it
+        // caps how much any one person (or a persistent bot) can cost in a day.
+        limiter: Ratelimit.slidingWindow(20, "1 d"),
+        prefix: "hat:rl:day",
+        analytics: false,
+      })
+    : null;
+  return dailyLimiter;
+}
+
+/**
+ * Per-visitor limits: a 10/minute burst wall AND a 20/day cap. Returns which one
+ * tripped so the route can answer in character ("frantic" vs "come back tomorrow").
+ * The minute check runs first, and a minute-blocked request does NOT spend the
+ * daily allowance. No-op (never blocks) when Redis isn't configured.
+ */
+export async function checkRateLimit(
+  identifier: string,
+): Promise<{ ok: boolean; scope?: "minute" | "day" }> {
+  const minute = getLimiter();
+  if (minute) {
+    try {
+      const { success } = await minute.limit(identifier);
+      if (!success) return { ok: false, scope: "minute" };
+    } catch {
+      // Redis hiccup shouldn't take the Hat down — fall through to allow.
+    }
   }
+  const daily = getDailyLimiter();
+  if (daily) {
+    try {
+      const { success } = await daily.limit(identifier);
+      if (!success) return { ok: false, scope: "day" };
+    } catch {
+      // ignore — best-effort
+    }
+  }
+  return { ok: true };
 }
 
 /**
