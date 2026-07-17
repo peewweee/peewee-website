@@ -23,27 +23,27 @@ const pipeline = [
   {
     step: "Embed",
     detail:
-      "My experience, projects, and personal facts are chunked and embedded by an embedding model.",
+      "Résumé, project, and profile content is chunked and embedded by an embedding model.",
   },
   {
     step: "Index",
     detail:
-      "The embeddings are committed to a local index file — no external vector database.",
+      "The embeddings are stored in a local index file — no external vector database.",
   },
   {
     step: "Retrieve",
     detail:
-      "A question is embedded and matched to the closest chunks by cosine similarity.",
+      "A question is embedded and matched to the closest passages by cosine similarity.",
   },
   {
     step: "Answer",
     detail:
-      "An LLM is instructed to reply using only the retrieved text — never inventing facts.",
+      "An LLM replies using only the retrieved passages, never inventing facts.",
   },
   {
     step: "Protect",
     detail:
-      "A response cache and per-visitor rate limit guard every request, keeping the Hat fast and free to run.",
+      "A response cache and per-visitor rate limiting guard every request, keeping the chatbot fast and free to run.",
   },
 ];
 
