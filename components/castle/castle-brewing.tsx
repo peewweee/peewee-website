@@ -1,134 +1,117 @@
+"use client";
+
+import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * CastleBrewing — a 2D "brewing" loader that covers the hero while the heavy
- * three.js castle chunk downloads and paints (the gap where "Welcome, wizard!"
- * is up but the 3D scene hasn't appeared yet). A cauldron with a glowing potion,
- * rising bubbles, and drifting steam; it adopts the active house accent.
+ * CastleBrewing — a simple 2D loading screen shown while the heavy three.js
+ * castle chunk downloads and paints (the gap where the hero would otherwise show
+ * "Welcome, wizard!" over an empty scene). A round dark-blue brewing-cauldron
+ * silhouette with bubbles floating up out of it, and a loading line below.
  *
  * Shown ONLY for plain / first-visit entries — never when arriving via the
  * back-to-castle iris (that transition already covers the load). See castle-hub.
- * `done` fades it out (opacity) once the scene reports ready.
+ * `done` fades it out once the scene reports ready.
  */
 
-/** Bubbles rising off the potion surface — varied x, size, and stagger. */
+/** Dark-blue silhouette fill (flat, reads against the near-black --bg). */
+const CAULDRON_BLUE = "#2c3872";
+
+/** Bubbles floating up out of the cauldron's mouth (icon coords, 200×200 box). */
 const BUBBLES = [
-  { left: 53, size: 7, delay: "0s" },
-  { left: 65, size: 5, delay: "0.5s" },
-  { left: 75, size: 8, delay: "0.9s" },
-  { left: 86, size: 6, delay: "1.3s" },
-  { left: 96, size: 5, delay: "1.7s" },
+  { x: 74, y: 66, size: 19, delay: "0s", dur: "2.8s" },
+  { x: 105, y: 63, size: 22, delay: "0.05s", dur: "3.1s" },
+  { x: 126, y: 66, size: 19, delay: "0.5s", dur: "2.9s" },
+  { x: 87, y: 64, size: 16, delay: "0.8s", dur: "2.7s" },
+  { x: 118, y: 64, size: 17, delay: "1s", dur: "3s" },
+  { x: 110, y: 66, size: 15, delay: "1.05s", dur: "2.6s" },
 ];
 
+/** Icon box size (px). Bubbles are authored in the SVG's 200-unit space and
+ *  scaled to the box, so this single knob resizes the whole cauldron. */
+const ICON_SIZE = 150;
+const SCALE = ICON_SIZE / 200;
+
 export function CastleBrewing({ done }: { done: boolean }) {
+  // Loading line: creep toward ~90% while loading (once, never repeating), then
+  // fill to 100% ONLY once the scene is ready (done). The creep is kicked off on
+  // the next frame so the width transition animates up from 0.
+  const [creep, setCreep] = React.useState(false);
+  React.useEffect(() => {
+    const id = requestAnimationFrame(() => setCreep(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  const fillWidth = done ? "100%" : creep ? "90%" : "0%";
+  // Slow, decelerating creep while loading (approaches 90% but never reaches it);
+  // a quick finish to 100% when ready.
+  const fillTransition = done
+    ? "width 0.5s ease-out"
+    : "width 12s cubic-bezier(0.05, 0.7, 0.1, 1)";
+
+  // Hold the whole loader fully opaque until the fill has reached 100%, THEN fade
+  // it out — so the bar visibly completes before the castle appears.
+  const [fade, setFade] = React.useState(false);
+  React.useEffect(() => {
+    if (!done) return;
+    const id = window.setTimeout(() => setFade(true), 650); // > fill's 0.5s + a beat
+    return () => window.clearTimeout(id);
+  }, [done]);
+
   return (
     <div
       aria-hidden
       className={cn(
         // fixed inset-0 fills the WHOLE viewport — including over the sticky site
-        // header (z-40) — so nothing but the brewing screen shows while loading.
-        // z-50 also clears the castle's drei <Html> labels (zIndexRange max 20) and
-        // the Sorting Hat map pin (max 40), whose inline z-indexes would otherwise
-        // punch through (the pin appeared before the brew faded).
-        "pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-7 bg-[var(--bg)] transition-opacity duration-700 ease-out",
-        done ? "opacity-0" : "opacity-100",
+        // header (z-40) — so nothing but this loading screen shows while loading.
+        // z-50 also clears the castle's drei <Html> labels (zIndexRange max 20)
+        // and the Sorting Hat map pin (max 40), which would otherwise punch through.
+        "pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-[var(--bg)] transition-opacity duration-700 ease-out",
+        fade ? "opacity-0" : "opacity-100",
       )}
     >
-      <div className="relative h-[130px] w-[150px]">
-        {/* Potion glow — a soft accent halo that pulses above/behind the rim. */}
-        <div className="castle-brew-glow absolute left-1/2 top-[26px] h-8 w-24 rounded-full bg-accent blur-2xl" />
-
-        {/* Cauldron */}
-        <svg
-          viewBox="0 0 150 130"
-          className="relative h-full w-full drop-shadow-[0_8px_18px_rgba(0,0,0,0.5)]"
-        >
-          <defs>
-            <radialGradient id="brewPotion" cx="50%" cy="30%" r="75%">
-              <stop offset="0%" stopColor="var(--accent-text)" />
-              <stop offset="100%" stopColor="var(--accent)" />
-            </radialGradient>
-            <linearGradient id="brewIron" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2b2517" />
-              <stop offset="100%" stopColor="#120e08" />
-            </linearGradient>
-          </defs>
-
-          {/* Feet */}
-          <path d="M50 103 l-7 17 h10 l4 -13 z" fill="#120e08" />
-          <path d="M100 103 l7 17 h-10 l-4 -13 z" fill="#120e08" />
-
-          {/* Body */}
-          <path
-            d="M26 55 Q22 105 75 109 Q128 105 124 55 Z"
-            fill="url(#brewIron)"
-            stroke="#4a3d24"
-            strokeWidth="1.5"
-          />
-          {/* Side handles */}
-          <path
-            d="M26 63 Q13 67 17 84"
-            fill="none"
-            stroke="#4a3d24"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          <path
-            d="M124 63 Q137 67 133 84"
-            fill="none"
-            stroke="#4a3d24"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-
-          {/* Rim */}
-          <ellipse
-            cx="75"
-            cy="53"
-            rx="52"
-            ry="14"
-            fill="#241d12"
-            stroke="#5a4a2c"
-            strokeWidth="1.5"
-          />
-          {/* Potion surface + highlight */}
-          <ellipse cx="75" cy="51" rx="44" ry="10" fill="url(#brewPotion)" />
-          <ellipse
-            cx="66"
-            cy="48"
-            rx="15"
-            ry="3.2"
-            fill="var(--accent-text)"
-            opacity="0.55"
-          />
+      <div className="relative" style={{ height: ICON_SIZE, width: ICON_SIZE }}>
+        {/* Round cauldron silhouette */}
+        <svg viewBox="0 0 200 200" className="relative h-full w-full">
+          <g fill={CAULDRON_BLUE}>
+            {/* two short legs, spread apart */}
+            <path d="M60 166 l-5 18 h11 l3 -13 z" />
+            <path d="M140 166 l5 18 h-11 l-3 -13 z" />
+            {/* very round belly — horizontal tangent at the base so the bottom is
+                a smooth round curve, never a point */}
+            <path d="M44 72 C16 100 20 176 100 176 C180 176 184 100 156 72 Z" />
+            {/* rim / lip */}
+            <ellipse cx="100" cy="68" rx="64" ry="23" />
+          </g>
+          {/* mouth — cut out to the background so the pot reads as open */}
+          <ellipse cx="100" cy="68" rx="46" ry="10" fill="var(--bg)" />
         </svg>
 
-        {/* Bubbles — rise off the potion surface and pop (in front of the pot). */}
+        {/* Bubbles — in front, floating up out of the cauldron's mouth. */}
         {BUBBLES.map((b, i) => (
           <span
             key={i}
-            className="castle-brew-bubble absolute rounded-full bg-accent-text"
+            className="brew-bubble absolute rounded-full bg-[rgba(160,175,220,0.5)]"
             style={{
-              left: b.left,
-              top: 46,
-              width: b.size,
-              height: b.size,
+              left: b.x * SCALE,
+              top: b.y * SCALE,
+              width: b.size * SCALE,
+              height: b.size * SCALE,
+              marginLeft: (-b.size * SCALE) / 2,
+              marginTop: (-b.size * SCALE) / 2,
               animationDelay: b.delay,
+              animationDuration: b.dur,
             }}
           />
         ))}
-
       </div>
 
-      {/* Simple loading indicator — three pulsing dots, no text. */}
-      <div className="flex items-center gap-2">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="size-2 animate-think rounded-full bg-accent-text"
-            style={{ animationDelay: `${i * 0.18}s` }}
-          />
-        ))}
+      {/* Loading line — fills toward ~90% while loading, then to 100% only once
+          the scene is ready (done). Never repeats. */}
+      <div className="relative h-1 w-40 overflow-hidden rounded-full bg-[rgba(154,170,214,0.16)]">
+        <span
+          className="absolute inset-y-0 left-0 rounded-full bg-[#9aaad6]"
+          style={{ width: fillWidth, transition: fillTransition }}
+        />
       </div>
     </div>
   );

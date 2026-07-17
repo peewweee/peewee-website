@@ -374,40 +374,34 @@ html.wand-active * {
 }
 
 /* =========================================================================
-   Castle "brewing" loader — the 2D cauldron shown while the heavy 3D castle
-   chunk loads (see castle-brewing.tsx). Bubbles rise + pop and the potion
-   glows. All neutralized by the reduced-motion block below.
+   Castle loading screen — the 2D dark-blue brewing-cauldron silhouette shown
+   while the heavy 3D castle chunk loads (see castle-brewing.tsx). Bubbles float
+   up out of the pot and pop. Neutralized by the reduced-motion block below.
    ========================================================================= */
-@keyframes castle-brew-bubble {
+@keyframes brew-bubble {
   0% {
-    transform: translateY(4px) scale(0.35);
+    transform: translateY(0) scale(0.4);
     opacity: 0;
   }
   25% {
-    opacity: 1;
+    opacity: 0.75;
+  }
+  75% {
+    opacity: 0.75;
   }
   100% {
-    transform: translateY(-24px) scale(1);
+    transform: translateY(-48px) scale(1.05);
     opacity: 0;
   }
 }
-@keyframes castle-brew-glow {
-  0%,
-  100% {
-    opacity: 0.4;
-    transform: translateX(-50%) scale(1);
-  }
-  50% {
-    opacity: 0.95;
-    transform: translateX(-50%) scale(1.16);
-  }
+.brew-bubble {
+  animation-name: brew-bubble;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
 }
-.castle-brew-bubble {
-  animation: castle-brew-bubble 1.9s ease-in-out infinite;
-}
-.castle-brew-glow {
-  animation: castle-brew-glow 2.4s ease-in-out infinite;
-}
+/* (The loading line's fill is driven by width transitions in castle-brewing.tsx —
+   it creeps while loading and completes only when the scene is ready, so it needs
+   no keyframe here.) */
 
 /* =========================================================================
    Reduced motion — neutralize every animation/transition (WCAG 2.1 AA)
