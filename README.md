@@ -1,18 +1,14 @@
 # Wizarding Portfolio — Phoebe Rhone Gangoso
 
-A Harry Potter–themed portfolio for an **AI Engineering** career target. The signature
-feature is an AI **"Sorting Hat"** that answers questions about Phoebe's work via
-retrieval-augmented generation (RAG) over her resume + project write-ups, set inside an
-interactive 3D castle that serves as the navigation.
+A Harry Potter–themed portfolio website with an AI **"Sorting Hat"** that answers questions about my experiences, skills, and projects via
+RAG over my project write-ups, set inside an interactive 3D castle that serves as the navigation.
 
-> **Guiding principle:** the theme is a wrapper; the substance is real. Projects, resume,
-> and contact stay fast, scannable, and accessible — a recruiter has ~30 seconds.
 
-**Phases 0–2 plus a content pass are live:** the shippable content site, the interactive 3D
+**I've shipped Phases 0–2 plus a content pass:** the content site, the interactive 3D
 castle navigation hub (React Three Fiber), a fleshed-out **Great Hall** (bio, Tech Stack,
 Experience, and a 3D "Daily Prophet" featured section), and **seven real projects** that link
-out to their live sites. The **"Ask the Sorting Hat" RAG chat is live** (Gemini + a local
-embedded index — see [Sorting Hat (RAG)](#sorting-hat-rag)); the atmosphere effects (music + wand cursor) are **live**; the site is **deployed on Vercel**.
+out to their live sites. My **"Ask the Sorting Hat" RAG chat is live** (Gemini + a local
+embedded index — see [Sorting Hat (RAG)](#sorting-hat-rag)); my atmosphere effects (music + wand cursor) are **live**; the site is **deployed on Vercel**.
 
 ---
 
@@ -33,7 +29,7 @@ npm run typecheck    # tsc --noEmit
 npm run format       # Prettier (write)
 ```
 
-No API keys are required to run the site locally — the Hat replies in-character until you add `GEMINI_API_KEY` + run `npm run ingest`, and email is stubbed until a Resend key is set (see
+No API keys are required to run my site locally — the Hat replies in-character until I add `GEMINI_API_KEY` + run `npm run ingest`, and email is stubbed until a Resend key is set (see
 [Environment](#environment-variables)).
 
 ---
@@ -180,17 +176,19 @@ real secrets.** Nothing here is needed for Phase 1.
 > needed — Upstash **Redis** is the only optional cloud dependency, and only for caching +
 > rate-limiting `/api/ask`. See [Sorting Hat (RAG)](#sorting-hat-rag).
 
-> 💰 **Cost guardrail:** before exposing `/api/ask` publicly, set a **hard spend cap** on
-> the Gemini key in Google AI Studio / Google Cloud billing. The public endpoint must also
-> be rate-limited + cached (Upstash Redis) — wired in Phase 3.
+> 💰 **Cost guardrail:** my endpoint stays on Gemini's **free tier** (no billing = a hard $0
+> ceiling) and is **rate-limited + cached** (Upstash Redis). See
+> [Security & best practices](#security--best-practices).
 
 ---
 
 ## Sorting Hat (RAG)
 
 The **"Ask the Sorting Hat"** chat ([`/sorting-hat`](app/sorting-hat)) answers questions
-about Phoebe using **retrieval-augmented generation**, grounded strictly in her own content
-and voiced in character (it politely declines anything off-topic).
+about me using **retrieval-augmented generation**, grounded strictly in my own content
+and voiced in character (it politely declines anything off-topic). Each question is answered
+on its own — the Hat is **single-shot**, with no conversation memory, which keeps it simple
+and cheap to run on a free tier.
 
 **How it works**
 
@@ -220,12 +218,12 @@ Without a key — or before the first `npm run ingest` — the Hat replies in ch
 
 - **Profile (summary, tech stack, experience, projects):** [`content/data.md`](content/data.md).
 - **Fun / personal facts** (hobbies, favorites, quirks): [`content/facts.md`](content/facts.md)
-  — replace the `(placeholder …)` lines; anything there is "about Phoebe" and in scope.
+  — replace the `(placeholder …)` lines; anything there is "about me" and in scope.
 - **Projects:** the MDX frontmatter in [`content/projects`](content/projects).
 
-> 💰 **Free-tier safe:** only the top 3–4 chunks and a low output-token cap per answer, plus
-> Redis caching and a ~6-message/visitor/day limit. Keep the Gemini key on the free tier and
-> set a hard spend cap before exposing `/api/ask` publicly.
+> 💰 **Free-tier safe:** only the top 4 chunks and a low output-token cap per answer, plus
+> Redis caching and per-visitor limits (**10/minute** and **20/day**). I keep the Gemini key on
+> the free tier — no billing means a hard $0 ceiling.
 
 ---
 
@@ -240,14 +238,18 @@ realistic threats are spam and quota-burn — and each is handled.
 
 - **Keys stay server-side.** The Gemini key lives only in the serverless route; the browser
   never sees it.
-- **Free-tier by design.** Runs on Gemini's free tier (no billing = a hard $0 ceiling). Set a
-  hard spend cap on the key before going public as a backstop.
-- **Per-visitor rate limit.** ~6 messages/visitor/day (Upstash Redis + `@upstash/ratelimit`,
-  sliding window), keyed by client IP **plus** a random id kept in an **httpOnly** cookie
-  (`hat_id`). Stops a script from draining the free quota; over the limit it returns `429`
-  with an in-character "the Hat must rest" reply — never a raw error.
+- **Free-tier by design.** Runs on Gemini's free tier — no billing means a hard $0 ceiling, so
+  the endpoint can never run up a charge no matter what.
+- **Per-visitor rate limits.** 10 messages/minute (burst wall) **and** 20/day (cost cap) per
+  visitor (Upstash Redis + `@upstash/ratelimit`, sliding window), keyed by client IP **plus** a
+  random id kept in an **httpOnly** cookie (`hat_id`). Stops a script from draining the free
+  quota; over a limit it returns `429` with an in-character reply — "wait a minute" for the
+  burst wall, "come back tomorrow" for the daily cap — never a raw error.
 - **Answer caching.** Repeat questions are served from Redis instead of re-calling Gemini —
   cheaper, and ~3.2s → ~0.1s. Order in the route: **rate-limit → cache → model**.
+- **Single-shot.** Each message is answered on its own (no conversation memory), so every
+  answer is exactly one model call — half the cost of a multi-turn design and easy to keep
+  inside the free tier.
 - **Grounded + guarded.** Answers come only from the retrieved résumé / projects / facts,
   voiced in character; anything off-topic is politely declined — so the endpoint can't be used
   as a free general-purpose chatbot (which would burn quota and go off-brand).
@@ -274,7 +276,7 @@ realistic threats are spam and quota-burn — and each is handled.
 - **Injection-safe.** User input is HTML-escaped before it enters the email body, and Resend's
   structured API (not raw SMTP) means form text can't forge email headers.
 - **Reliable delivery.** Resend handles sender reputation + SPF/DKIM; the visitor's address is
-  set as **reply-to**, so you just hit Reply.
+  set as **reply-to**, so I just hit Reply.
 
 ### Shared practices
 
@@ -290,16 +292,14 @@ realistic threats are spam and quota-burn — and each is handled.
 
 ## Next steps (Phases 3–4)
 
-**Phase 2 polish (optional).** The castle is procedural geometry. If you later want a
-richer model, drop an original Draco-compressed glTF into the scene (swap the meshes in
+**Phase 2 polish (optional).** The castle is procedural geometry. If I later want a
+richer model, I can drop an original Draco-compressed glTF into the scene (swap the meshes in
 [`castle-scene.tsx`](components/castle/castle-scene.tsx)) — the camera, hotspots, tokens,
 and fallback all stay as-is.
 
-**Phase 3 — the Hat (AI).** Add `GEMINI_API_KEY` + Upstash. Implement
-[`lib/rag`](lib/rag): ✅ already done — local `index.json` + `/api/ask` retrieval + grounded
-Gemini answer (non-streaming, Vercel AI SDK) and citations; add Redis **rate-limit +
-cache**. Then build the "Behind the
-Magic" panel.
+**Phase 3 — the Hat (AI).** ✅ **Done** — `lib/rag` local `index.json` + `/api/ask` retrieval
++ grounded Gemini answer (non-streaming, Vercel AI SDK) with citations, Redis **rate-limit +
+cache**, and the "Behind the Magic" panel on About.
 
 **Phase 4 — atmosphere.** ✅ Done — `MusicToggle` plays a looping HTML5 `Audio` track with
 fade in/out (autoplay-safe), and `WandCursor` is the full wand + capped sparkle trail +
