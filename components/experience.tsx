@@ -306,14 +306,14 @@ export function Experience() {
             <PhotoFrame
               shape="rect"
               orientation="portrait"
-              src="/experience/image5.jpg"
+              src="/experience/image4.jpg"
               alt="Phoebe on stage with the crowd of attendees at the JBECP PUP-Manila convention."
               sizes="(min-width: 1024px) 260px, 42vw"
             />
             <PhotoFrame
               shape="oval"
               orientation="landscape"
-              src="/experience/image4.jpg"
+              src="/experience/image5.jpg"
               alt="Phoebe giving a thumbs up beside the Microsoft sign at the Microsoft Philippines office."
               sizes="(min-width: 1024px) 260px, 42vw"
             />
