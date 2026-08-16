@@ -29,6 +29,39 @@ const HAT = {
   pondering: "Hmm... my thoughts have wandered a moment too far. Ask me again shortly, and I shall answer.",
 };
 
+/**
+ * Fixed, complete replies for "list everything" questions. The model doesn't write
+ * these — when it detects such a request it emits a sentinel marker (see the system
+ * prompt), and we swap in the script here. Same ONE model call, guaranteed-complete
+ * list. Plain text (dashes for bullets) to match the Hat's no-markdown style. Keep in
+ * sync with content/data.md.
+ */
+const SCRIPTED = {
+  projects:
+    "Ah, let me show you what Phoebe has conjured! Seven creations in all:\n\n" +
+    "Aura — an AI-powered finance app that turns plain-language expenses into tracked spending and guidance (Java, Spring Boot, Gemini).\n" +
+    "CrowdFlow — a crowd-aware itinerary planner that reroutes you to emptier spots (Next.js, Gemini, OpenWeather).\n" +
+    "Solar Connect — a real-time dashboard for a solar-powered charging station thesis (Next.js, Supabase).\n" +
+    "Balai ni Juan — an event-venue booking site built for a client (JavaScript, HTML, CSS).\n" +
+    "Arduino Day PH 2025 — the official event website's UI/UX design (Figma).\n" +
+    "Sparkfest — UI/UX design for the GDG PUP hackathon site (Figma).\n" +
+    "FairySplit — a fairer shared-expense app, still in the works (React, NestJS).\n\n" +
+    "Wander into the Library to see them all in full.",
+  experience:
+    "Let me trace Phoebe's path so far — three chapters:\n\n" +
+    "Junior AI Engineer at SOFI AI Tech Solution (Jan–Mar 2026) — kept 10+ live client chatbots stable, built a document-ingestion system with FAISS, and refined RAG pipelines.\n" +
+    "Developer Intern at SOFI AI Tech Solution (Jul–Dec 2025) — launched a client-facing AI agent into production, wired up Google Sheets automations, and extended chatbots through REST APIs.\n" +
+    "Software Engineer Intern at Dewise Solutions (Aug–Oct 2024) — built a Next.js progressive web app, completed 10+ Microsoft Learn paths, and shaped UI/UX through wireframing and prototyping.\n\n" +
+    "Her Resume holds the finer details.",
+} as const;
+
+/** Markers the model emits (instead of answering) for full-list requests. Matched
+ *  loosely — the distinctive token is enough, with or without the [[ ]] brackets. */
+const SENTINEL = {
+  projects: /LIST_PROJECTS/i,
+  experience: /LIST_EXPERIENCE/i,
+};
+
 /** Stable per-visitor id: client IP + a random id kept in an httpOnly cookie. */
 function identify(req: Request): { id: string; cookieId: string; isNew: boolean } {
   const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "local";
@@ -166,6 +199,18 @@ export async function POST(req: Request) {
     return overwhelmed
       ? textReply(HAT.rateLimited, [], { status: 429, cookie })
       : textReply(HAT.pondering, [], { cookie });
+  }
+
+  // Sentinel routing: for a "list ALL projects / experience" request the model returns a
+  // marker instead of an answer, so we serve the fixed, complete script — in the SAME one
+  // call. Cache it so an exact repeat of the question skips the model entirely.
+  if (SENTINEL.projects.test(answer)) {
+    await setCachedAnswer(question, { answer: SCRIPTED.projects, citations: [] });
+    return textReply(SCRIPTED.projects, [], { cookie });
+  }
+  if (SENTINEL.experience.test(answer)) {
+    await setCachedAnswer(question, { answer: SCRIPTED.experience, citations: [] });
+    return textReply(SCRIPTED.experience, [], { cookie });
   }
 
   await setCachedAnswer(question, { answer, citations });
