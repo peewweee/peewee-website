@@ -17,10 +17,10 @@ source: "About Phoebe"
 
 ## Hobbies & Interests
 
-- "Enjoys playing games like Roblox and Valorant."
-- "Loves watching movies — Harry Potter is a favorite."
-- "Loves Everything Pink"
-- "
+- Enjoys solving in escape rooms.
+- Loves watching movies — Harry Potter is a favorite.
+- Loves Everything Pink
+
 
 ## Favorites
 
@@ -31,19 +31,19 @@ source: "About Phoebe"
 
 ## Personality & Quirks
 
-- "Outgoing and an open book"
-- "Fueled by Matcha during the day and iced coffee during late-night coding."
+- Outgoing and an open book
+- Fueled by Matcha during the day and iced coffee during late-night coding.
 
 ## Values & What Drives Her
 
-- (placeholder — e.g. "Wants to build AI products that genuinely help people.")
-- (placeholder — e.g. "Believes good design and good engineering are inseparable.")
+- Wants to build AI products that genuinely help people.
+-Believes good design and good engineering are inseparable.
 
 ## Fun Facts
 
-- "Goes by the nickname 'Pheebs'"
+- Goes by the nickname 'Pheebs'
 - (placeholder)
 
 ## Personal Info
-- Age: "Twenty-something"
+- Age: Twenty-something
 - Birthday: "Remember to send a birthday gift on May 15!"
