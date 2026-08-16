@@ -42,7 +42,6 @@ source: "About Phoebe"
 ## Fun Facts
 
 - Goes by the nickname 'Pheebs'
-- (placeholder)
 
 ## Personal Info
 - Age: Twenty-something
