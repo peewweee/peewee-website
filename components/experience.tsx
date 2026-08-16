@@ -3,6 +3,8 @@
 import * as React from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 
+import { PhotoFrame } from "@/components/photo-frame";
+
 type Role = { title: string; dates: string; bullets: string[] };
 type Company = { company: string; logo: string; roles: Role[] };
 type Leadership = {
@@ -190,8 +192,10 @@ export function Experience() {
         Experiences
       </h2>
 
-      {/* Work experience — timeline with a faded rail + a scroll-tracking beam */}
-      <div className="mt-8">
+      {/* Work experience — two columns: the timeline, then the framed photos.
+          Photos: row 1 is the oval + rectangle portraits, row 2 the landscape. */}
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1.25fr_1fr] lg:gap-12">
+        <div>
         <SubHeading>Work Experience</SubHeading>
         <ol ref={railRef} className="relative mt-5 space-y-8 pl-6">
           {/* faded base line */}
@@ -232,10 +236,44 @@ export function Experience() {
             </li>
           ))}
         </ol>
+        </div>
+
+        {/* Work photos — `self-start` so they hug the top of the tall timeline
+            column instead of stretching to match its height. */}
+        <div className="grid gap-4 self-start sm:gap-5">
+          <div className="grid grid-cols-2 gap-4 sm:gap-5">
+            <PhotoFrame
+              shape="oval"
+              orientation="portrait"
+              src="/experience/image1.jpg"
+              alt="Phoebe with three SOFI AI Tech Solution teammates in front of a wall covered in handwritten signatures."
+              sizes="(min-width: 1024px) 260px, 42vw"
+            />
+            <PhotoFrame
+              shape="rect"
+              orientation="portrait"
+              src="/experience/image2.jpg"
+              alt="Phoebe presenting a design-process flow on a meeting-room screen at Dewise Solutions."
+              sizes="(min-width: 1024px) 260px, 42vw"
+            />
+          </div>
+          <PhotoFrame
+            shape="rect"
+            orientation="landscape"
+            src="/experience/image3.jpg"
+            alt="Phoebe and her colleagues gathered around a cake in the office lounge."
+            sizes="(min-width: 1024px) 520px, 88vw"
+          />
+        </div>
       </div>
 
-      {/* Leadership experience — line-separated rows, org first, with logos */}
-      <div className="mt-10">
+      {/* Leadership experience — two columns, mirrored from the work block: the
+          framed photos sit on the LEFT and the list on the right.
+          The list stays FIRST in the DOM so the stacked mobile layout still
+          reads text-then-photos; `lg:order-*` does the swap on wide screens
+          only (and keeps the reading/tab order text-first everywhere). */}
+      <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_1.25fr] lg:gap-12">
+        <div className="lg:order-2">
         <SubHeading>Leadership Experience</SubHeading>
         <div className="mt-4 divide-y divide-border">
           {LEADERSHIP.map((l, i) => (
@@ -257,6 +295,45 @@ export function Experience() {
               </div>
             </div>
           ))}
+        </div>
+        </div>
+
+        {/* Leadership photos — two columns of two rows each. `items-start` keeps
+            the columns top-aligned rather than stretching to a shared height.
+            `lg:order-1` floats them ahead of the list on wide screens. */}
+        <div className="grid grid-cols-2 items-start gap-4 self-start sm:gap-5 lg:order-1">
+          <div className="grid gap-4 sm:gap-5">
+            <PhotoFrame
+              shape="rect"
+              orientation="portrait"
+              src="/experience/image5.jpg"
+              alt="Phoebe on stage with the crowd of attendees at the JBECP PUP-Manila convention."
+              sizes="(min-width: 1024px) 260px, 42vw"
+            />
+            <PhotoFrame
+              shape="oval"
+              orientation="landscape"
+              src="/experience/image4.jpg"
+              alt="Phoebe giving a thumbs up beside the Microsoft sign at the Microsoft Philippines office."
+              sizes="(min-width: 1024px) 260px, 42vw"
+            />
+          </div>
+          <div className="grid gap-4 sm:gap-5">
+            <PhotoFrame
+              shape="rect"
+              orientation="landscape"
+              src="/experience/image6.jpg"
+              alt="Phoebe with a large student-community group at an evening tech event."
+              sizes="(min-width: 1024px) 260px, 42vw"
+            />
+            <PhotoFrame
+              shape="oval"
+              orientation="portrait"
+              src="/experience/image7.jpg"
+              alt="Phoebe taking a wide-angle group selfie with friends around a table at an evening gathering."
+              sizes="(min-width: 1024px) 260px, 42vw"
+            />
+          </div>
         </div>
       </div>
     </section>

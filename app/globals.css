@@ -404,6 +404,60 @@ html.wand-active * {
    no keyframe here.) */
 
 /* =========================================================================
+   Enchanted portrait — the "moving portrait" inside the gilded frame
+   (see portrait-frame.tsx). The frame stays still; only the photo behind the
+   glass breathes, drifts, and catches an occasional sheen. Durations are
+   deliberately unequal so the loops never visibly sync up. Neutralized by the
+   reduced-motion block below (and by `motion-reduce:` utilities).
+   ========================================================================= */
+@keyframes portrait-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+@keyframes portrait-sway {
+  0%,
+  100% {
+    transform: translate3d(-0.7%, 0.5%, 0);
+  }
+  50% {
+    transform: translate3d(0.7%, -0.5%, 0);
+  }
+}
+/* The sweep occupies only the first ~16% of the timeline; the long tail offscreen
+   is what makes the shimmer read as "occasional" rather than constant. */
+@keyframes portrait-sheen {
+  0% {
+    transform: translateX(0) skewX(-16deg);
+    opacity: 0;
+  }
+  3% {
+    opacity: 0.75;
+  }
+  13% {
+    opacity: 0.75;
+  }
+  16%,
+  100% {
+    transform: translateX(520%) skewX(-16deg);
+    opacity: 0;
+  }
+}
+.portrait-breathe {
+  animation: portrait-breathe 11s var(--ease-candle) infinite;
+}
+.portrait-sway {
+  animation: portrait-sway 14s var(--ease-float) infinite;
+}
+.portrait-sheen {
+  animation: portrait-sheen 9s var(--ease-glide) infinite;
+}
+
+/* =========================================================================
    Reduced motion — neutralize every animation/transition (WCAG 2.1 AA)
    ========================================================================= */
 
