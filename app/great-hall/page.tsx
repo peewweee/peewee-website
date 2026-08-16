@@ -8,6 +8,7 @@ import { FeaturedProphet } from "@/components/featured-prophet";
 import { PortraitFrame } from "@/components/portrait-frame";
 import { TechStack } from "@/components/tech-stack";
 import { Experience } from "@/components/experience";
+import { Education } from "@/components/education";
 
 export const metadata: Metadata = {
   title: "Great Hall",
@@ -69,6 +70,9 @@ export default function GreatHallPage() {
 
       {/* Experiences — work history + leadership, below the Tech Stack */}
       <Experience />
+
+      {/* Education — degree + certificates, between Experiences and Projects */}
+      <Education />
 
       {/* Featured projects — a "Daily Prophet" front page in 3D */}
       <section aria-labelledby="featured-heading">
