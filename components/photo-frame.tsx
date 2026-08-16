@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   GildingDefs,
   LivingPhoto,
+  ViewableFrame,
   epath,
   rrect,
   useFrameIds,
@@ -52,6 +53,8 @@ export interface PhotoFrameProps {
   className?: string;
   sizes?: string;
   priority?: boolean;
+  /** Click (or Enter/Space) opens the full, uncropped photo in a lightbox. */
+  viewable?: boolean;
 }
 
 export function PhotoFrame({
@@ -62,6 +65,7 @@ export function PhotoFrame({
   className,
   sizes = "(min-width: 1024px) 320px, 45vw",
   priority = false,
+  viewable = true,
 }: PhotoFrameProps) {
   const frameRef = React.useRef<HTMLElement>(null);
   const vb = VIEWBOX[orientation];
@@ -83,7 +87,7 @@ export function PhotoFrame({
     ...(shape === "oval" ? { borderRadius: "50%" } : null),
   };
 
-  return (
+  const frame = (
     <figure ref={frameRef} className={cn("relative m-0 w-full", className)}>
       {/* Candlelit halo, flickering like a wall sconce (site glow token). */}
       <div
@@ -96,7 +100,9 @@ export function PhotoFrame({
         <LivingPhoto
           frameRef={frameRef}
           src={src}
-          alt={alt}
+          // When the frame is a button, the button carries the accessible name —
+          // so the thumbnail itself is decorative and must not be announced twice.
+          alt={viewable ? "" : alt}
           sizes={sizes}
           priority={priority}
           className={shape === "oval" ? undefined : "rounded-[1%]"}
@@ -105,6 +111,14 @@ export function PhotoFrame({
         <GiltFrame shape={shape} vbW={vb.w} vbH={vb.h} open={open} />
       </div>
     </figure>
+  );
+
+  if (!viewable) return frame;
+
+  return (
+    <ViewableFrame src={src} alt={alt}>
+      {frame}
+    </ViewableFrame>
   );
 }
 

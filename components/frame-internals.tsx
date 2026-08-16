@@ -5,6 +5,13 @@ import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion, useIsTouchDevice } from "@/lib/use-preference";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 /**
  * Shared internals for the gilded picture frames — the "living portrait" photo
@@ -142,6 +149,87 @@ export function LivingPhoto({
         className="portrait-sheen pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-[linear-gradient(90deg,transparent,rgba(244,236,216,0.42),transparent)] motion-reduce:hidden"
       />
     </div>
+  );
+}
+
+/**
+ * ViewableFrame — makes a framed photo clickable: the frame becomes the trigger,
+ * and opening it shows the FULL, uncropped photo in a lightbox with nothing but
+ * a close button.
+ *
+ * Built on the site's Radix Dialog, so focus trapping, Esc-to-close, click-the-
+ * scrim-to-close and focus restoration all come for free.
+ *
+ * Accessibility: the button carries the name, so the thumbnail inside must be
+ * decorative (`alt=""`) or screen readers announce the photo twice.
+ */
+export function ViewableFrame({
+  src,
+  alt,
+  children,
+}: {
+  src: string;
+  alt: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          aria-label={`${alt} — view larger`}
+          className="block w-full cursor-zoom-in rounded-lg transition-transform duration-300 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-bg motion-reduce:transition-none motion-reduce:hover:scale-100"
+        >
+          {children}
+        </button>
+      </DialogTrigger>
+
+      {/* Just the photo and a bare X — no card, chip, caption or padding.
+          The panel fills the viewport (the `!` overrides cancel Dialog's centred
+          max-width box) for two reasons: the built-in close button's `right-4
+          top-4` then lands in the TRUE top-right corner, and everything around
+          the photo becomes dead space.
+          Everything around the photo is a full-bleed close button, so tapping
+          outside the image dismisses exactly like the X. (Radix forces
+          `pointer-events: auto` inline on modal content, so letting taps fall
+          through to the overlay isn't an option — this catcher is.) */}
+      <DialogContent
+        className={cn(
+          "!left-0 !top-0 !w-screen !max-w-none !translate-x-0 !translate-y-0",
+          "h-screen place-items-center gap-0 border-0 bg-transparent p-0 shadow-none",
+          "[&>button]:text-foreground [&>button>svg]:size-6",
+        )}
+      >
+        {/* Radix requires a title; kept screen-reader-only so the view stays
+            visually clean while the dialog still announces what it contains. */}
+        <DialogTitle className="sr-only">{alt}</DialogTitle>
+
+        {/* Tap-outside-to-close. Hidden from assistive tech and skipped by Tab:
+            it's a redundant mouse affordance, and the real X plus Esc already
+            provide an accessible way out. */}
+        <DialogClose asChild>
+          <button
+            type="button"
+            aria-hidden
+            tabIndex={-1}
+            className="absolute inset-0 cursor-zoom-out"
+          />
+        </DialogClose>
+
+        {/* width/height are only an aspect hint — `w-auto h-auto` lets the element
+            shrink-wrap the photo, so its box IS the photo. `relative z-10` lifts
+            it above the catcher, so clicking the photo itself does nothing. */}
+        <Image
+          src={src}
+          alt=""
+          width={1600}
+          height={1600}
+          sizes="(max-width: 1150px) 94vw, 1150px"
+          className="relative z-10 max-h-[88vh] max-w-[94vw] object-contain"
+          style={{ width: "auto", height: "auto" }}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }
 

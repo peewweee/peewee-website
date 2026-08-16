@@ -320,19 +320,20 @@ export function Experience() {
           </div>
           <div className="grid gap-4 sm:gap-5">
             <PhotoFrame
-              shape="rect"
-              orientation="landscape"
-              src="/experience/image6.jpg"
-              alt="Phoebe with a large student-community group at an evening tech event."
-              sizes="(min-width: 1024px) 260px, 42vw"
-            />
-            <PhotoFrame
               shape="oval"
               orientation="portrait"
-              src="/experience/image7.jpg"
+              src="/experience/image6.jpg"
               alt="Phoebe taking a wide-angle group selfie with friends around a table at an evening gathering."
               sizes="(min-width: 1024px) 260px, 42vw"
             />
+            <PhotoFrame
+              shape="rect"
+              orientation="landscape"
+              src="/experience/image7.jpg"
+              alt="Phoebe with a large student-community group at an evening tech event."
+              sizes="(min-width: 1024px) 260px, 42vw"
+            />
+
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   GildingDefs,
   LivingPhoto,
+  ViewableFrame,
   rrect,
   useFrameIds,
 } from "@/components/frame-internals";
@@ -56,6 +57,8 @@ export interface PortraitFrameProps {
    */
   sizes?: string;
   priority?: boolean;
+  /** Click (or Enter/Space) opens the full, uncropped photo in a lightbox. */
+  viewable?: boolean;
 }
 
 export function PortraitFrame({
@@ -64,10 +67,11 @@ export function PortraitFrame({
   className,
   sizes = "(min-width: 1024px) 384px, 256px",
   priority = false,
+  viewable = true,
 }: PortraitFrameProps) {
   const frameRef = React.useRef<HTMLElement>(null);
 
-  return (
+  const frame = (
     <figure ref={frameRef} className={cn("relative m-0 w-full", className)}>
       {/* Candlelit halo — sits behind the frame and flickers like a wall sconce.
           Uses the site's own glow token so house theming flows through. */}
@@ -82,7 +86,9 @@ export function PortraitFrame({
         <LivingPhoto
           frameRef={frameRef}
           src={src}
-          alt={alt}
+          // When the frame is a button, the button carries the accessible name —
+          // so the thumbnail itself is decorative and must not be announced twice.
+          alt={viewable ? "" : alt}
           sizes={sizes}
           priority={priority}
           className="rounded-[1%]"
@@ -91,6 +97,14 @@ export function PortraitFrame({
         <OrnateFrame />
       </div>
     </figure>
+  );
+
+  if (!viewable) return frame;
+
+  return (
+    <ViewableFrame src={src} alt={alt}>
+      {frame}
+    </ViewableFrame>
   );
 }
 
