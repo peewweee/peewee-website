@@ -15,10 +15,14 @@ export const google = createGoogleGenerativeAI({
 });
 
 /** Generation model — grounded answers. Override with GEMINI_CHAT_MODEL.
- *  Free-tier request quotas vary sharply by model on this key (2.5-flash-lite ≈ 20,
- *  2.0-flash-lite = 0). gemini-2.5-flash has a usable free allowance; we disable its
- *  "thinking" in ask.ts so the short answer isn't starved of output tokens. */
-export const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL ?? "gemini-flash-latest";
+ *  PINNED to an explicit version on purpose. The floating "-latest" aliases move
+ *  without warning: gemini-flash-latest now resolves to a model that returns 503
+ *  "high demand" (the request just hangs), and the previous pins 2.5-flash /
+ *  2.5-flash-lite have since been retired and 404. A pinned, current model fails
+ *  loudly at deploy time instead of silently breaking the Hat in production.
+ *  "Thinking" is disabled in ask.ts so the short answer isn't starved of output
+ *  tokens. */
+export const CHAT_MODEL = process.env.GEMINI_CHAT_MODEL ?? "gemini-3.5-flash";
 
 /** Embedding model — retrieval. Override with GEMINI_EMBED_MODEL. */
 export const EMBED_MODEL = process.env.GEMINI_EMBED_MODEL ?? "gemini-embedding-001";
